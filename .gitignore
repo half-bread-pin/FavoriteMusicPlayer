@@ -1,0 +1,7 @@
+# 构建产物不入库，经 GitHub/Gitee Releases 分发
+# Build output stays local; distribute via Releases
+dist/
+src/bin/
+src/obj/
+.vs/
+*.user
