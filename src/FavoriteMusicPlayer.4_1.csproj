@@ -1,0 +1,14 @@
+<!-- SPT 4.1.x（基座 0.16.9.5，大规模反混淆命名）构建目标 -->
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <GameDir Condition="'$(GameDir)' == ''">F:\EFT416</GameDir>
+    <DistLine>4.1.6</DistLine>
+    <DefineConstants>$(DefineConstants);SPT41</DefineConstants>
+    <BaseIntermediateOutputPath>obj\416\</BaseIntermediateOutputPath>
+    <OutputPath>bin\416\</OutputPath>
+  </PropertyGroup>
+
+  <Import Project="Common.props" />
+
+</Project>

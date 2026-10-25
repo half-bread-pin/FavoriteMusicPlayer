@@ -6,7 +6,11 @@ using SPT.Reflection.Patching;
 using System.Linq;
 using System.Reflection;
 using UnityEngine;
+#if SPT41
+using HeadsetClass = EFT.InventoryLogic.Headphones;
+#else
 using HeadsetClass = HeadphonesItemClass;
+#endif
 
 namespace FavoriteMusicPlayer.Patches
 {

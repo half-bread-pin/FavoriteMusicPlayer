@@ -82,7 +82,7 @@ Three optional max play times (seconds), **0 = unlimited** (default):
 
 - **Spawn music**: fades out and stops at the limit; ambient music starts earlier as a result
 - **Death / Extract music**: same, on the results screen
-- **UI sounds**: one limit for all 8 sounds; changes take effect after the sounds reload (restart or return from a raid)
+- **UI sounds**: one limit for all 8 sounds; changes apply immediately to subsequently triggered sounds
 
 This is implemented as playback-time control (fade + stop the source at the deadline); files on disk are never modified. Menu, ambient and combat music are not subject to duration limits.
 

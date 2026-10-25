@@ -1,7 +1,9 @@
 #!/bin/bash
-# 生成 dist/FavoriteMusicPlayer 完整音乐文件夹树，每个文件夹放一个双语 aboutThisFolder.txt
+# 为 dist/4.0.13 和 dist/4.1.6 两条版本线各生成完整音乐文件夹树，每个文件夹放一个双语 aboutThisFolder.txt
 set -e
-DIST="$(cd "$(dirname "$0")/.." && pwd)/dist/FavoriteMusicPlayer"
+DIST_ROOT="$(cd "$(dirname "$0")/.." && pwd)/dist"
+for VER in "4.0.13" "4.1.6"; do
+DIST="$DIST_ROOT/$VER/FavoriteMusicPlayer"
 mkdir -p "$DIST"
 
 write_note() {
@@ -97,3 +99,5 @@ write_note "$DIST/UISounds/TradeSound" \
 
 echo "文件夹树创建完成 / Folder tree created:"
 find "$DIST" -type d | sort
+
+done

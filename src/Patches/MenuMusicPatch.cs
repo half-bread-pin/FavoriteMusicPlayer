@@ -24,10 +24,10 @@ namespace FavoriteMusicPlayer.Patches
 
         protected override MethodBase GetTargetMethod()
         {
-            var method = AccessTools.Method(typeof(GUISounds), nameof(GUISounds.method_3));
+            var method = AccessTools.Method(typeof(GUISounds), Plugin.MenuMusicPlayMethod);
             if (method == null)
             {
-                Plugin.LogSource.LogError("MenuMusicPatch: 找不到 GUISounds.method_3，主菜单音乐补丁未生效");
+                Plugin.LogSource.LogError("MenuMusicPatch: 找不到菜单音乐播放方法（" + Plugin.MenuMusicPlayMethod + "），主菜单音乐补丁未生效");
             }
             return method;
         }
@@ -66,9 +66,20 @@ namespace FavoriteMusicPlayer.Patches
         }
 
         [PatchPrefix]
-        static bool Prefix(AudioSource ___audioSource_3, AudioClip[] ___audioClip_0)
+        static bool Prefix(AudioSource ___audioSource_3
+#if SPT41
+            , AudioClip[] ____mainMenuMusic
+#else
+            , AudioClip[] ___audioClip_0
+#endif
+            )
         {
             Audio.menuMusicAudioSource = ___audioSource_3;
+#if SPT41
+            AudioClip[] menuMusicClips = ____mainMenuMusic;
+#else
+            AudioClip[] menuMusicClips = ___audioClip_0;
+#endif
             try
             {
                 if (menuTrackList.IsNullOrEmpty())
@@ -80,24 +91,24 @@ namespace FavoriteMusicPlayer.Patches
                         // More importantly, adding each element of BSG's AudioClip array to our trackArray means that players can
                         // use "Jukebox" controls on the default menu music.
 
-                        if (___audioClip_0 == null || ___audioClip_0.Length == 0)
+                        if (menuMusicClips == null || menuMusicClips.Length == 0)
                         {
                             return false;
                         }
-                        int[] randomArray = new int[___audioClip_0.Length];
+                        int[] randomArray = new int[menuMusicClips.Length];
                         Plugin.LogSource.LogInfo("Starting 'for loop'");
-                        for (int i = 0; i < ___audioClip_0.Length - 1; i++)
+                        for (int i = 0; i < menuMusicClips.Length - 1; i++)
                         {
                             Plugin.LogSource.LogInfo("for loop iteration " + i);
                             int randomInt;
                             do
                             {
                                 Plugin.LogSource.LogInfo("choosing randomInt");
-                                randomInt = Plugin.rand.Next(___audioClip_0.Length);
+                                randomInt = Plugin.rand.Next(menuMusicClips.Length);
                             } while (randomArray.Contains(randomInt));
 
                             randomArray[i] = randomInt;
-                            trackArray.Add(___audioClip_0[randomInt]);
+                            trackArray.Add(menuMusicClips[randomInt]);
                         }
                     }
 
@@ -106,7 +117,7 @@ namespace FavoriteMusicPlayer.Patches
                     Audio.menuMusicAudioSource.Play();
                     trackCounter++;
                     MenuMusicJukebox.menuMusicCoroutine = StaticManager.Instance.WaitSeconds(
-                        Audio.menuMusicAudioSource.clip.length, new Action(Singleton<GUISounds>.Instance.method_3));
+                        Audio.menuMusicAudioSource.clip.length, new Action(Plugin.PlayMenuMusic));
                     if (trackCounter >= trackArray.Count)
                     {
                         trackCounter = 0;
@@ -114,6 +125,13 @@ namespace FavoriteMusicPlayer.Patches
                 }
                 else
                 {
+                    // 竞态防御：歌单文件是异步加载的，若游戏在加载完成前就触发播曲
+                    // （4.1.x 菜单就绪更快，容易撞上），先放行原方法播原版音乐，
+                    // 下一次触发（WaitSeconds 链）时歌单就绪即接管
+                    if (trackArray.IsNullOrEmpty())
+                    {
+                        return true;
+                    }
                     if (trackArray.Count == 1)
                     {
                         trackCounter = 0;
@@ -125,7 +143,7 @@ namespace FavoriteMusicPlayer.Patches
                     Plugin.LogSource.LogInfo("Playing " + trackNamesArray[trackCounter]);
                     trackCounter++;
                     MenuMusicJukebox.menuMusicCoroutine = StaticManager.Instance.WaitSeconds(
-                        Audio.menuMusicAudioSource.clip.length, new Action(Singleton<GUISounds>.Instance.method_3));
+                        Audio.menuMusicAudioSource.clip.length, new Action(Plugin.PlayMenuMusic));
                     if (trackCounter >= trackArray.Count)
                     {
                         trackCounter = 0;
@@ -146,10 +164,10 @@ namespace FavoriteMusicPlayer.Patches
     {
         protected override MethodBase GetTargetMethod()
         {
-            var method = AccessTools.Method(typeof(GUISounds), nameof(GUISounds.method_8));
+            var method = AccessTools.Method(typeof(GUISounds), Plugin.MenuMusicStopCoroutineMethod);
             if (method == null)
             {
-                Plugin.LogSource.LogError("MenuMusicMethod8Patch: 找不到 GUISounds.method_8，补丁未生效");
+                Plugin.LogSource.LogError("MenuMusicMethod8Patch: 找不到菜单音乐协程停止方法（" + Plugin.MenuMusicStopCoroutineMethod + "），补丁未生效");
             }
             return method;
         }
@@ -157,7 +175,7 @@ namespace FavoriteMusicPlayer.Patches
         [PatchPrefix]
         static bool Prefix()
         {
-            Plugin.LogSource.LogInfo("GUISounds.method_8 called");
+            Plugin.LogSource.LogInfo("StopMenuMusicCoroutine called");
             if (MenuMusicJukebox.menuMusicCoroutine == null)
             {
                 return false;
@@ -184,7 +202,7 @@ namespace FavoriteMusicPlayer.Patches
         static bool Prefix(float transitionTime)
         {
             Plugin.LogSource.LogInfo("GUISounds.StopMenuBackgroundMusicWithDelay called");
-            Singleton<GUISounds>.Instance.method_8();
+            Plugin.StopMenuMusicCoroutine();
             MenuMusicJukebox.menuMusicCoroutine = StaticManager.Instance.WaitSeconds(transitionTime, new Action(Singleton<GUISounds>.Instance.method_7));
             return false;
         }

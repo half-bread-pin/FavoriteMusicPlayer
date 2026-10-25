@@ -15,13 +15,15 @@
 
 ```
 src/                          源码（在此开发）
-  ├─ FavoriteMusicPlayer.csproj   SDK 风格；GameDir 指向游戏目录
-  ├─ Plugin.cs                    BepInEx 插件入口 + 点唱机 + 音频加载 + 时长限制
-  ├─ Patches/                     全部 Harmony 补丁（13 个）
-  └─ Utils/OverlayDebug.cs        DEBUG 构建的游戏内调试覆盖层
-dist/FavoriteMusicPlayer/      构建产物（已 gitignore，不入库；经 Releases 分发，本地打包用）
+  ├─ FavoriteMusicPlayer.csproj     4.0.13 构建目标（GameDir=E:\ETF → dist\4.0.13\）
+  ├─ FavoriteMusicPlayer.4_1.csproj 4.1.x 构建目标（SPT41 常量，GameDir=F:\EFT416 → dist\4.1.6\）
+  ├─ Common.props                   公共构建配置（双 csproj 导入，勿在单侧 csproj 里改公共项）
+  ├─ Plugin.cs                BepInEx 插件入口 + 点唱机 + 音频加载 + 时长限制 + SPT 版本兼容层
+  ├─ Patches/                 全部 Harmony 补丁（13 个）
+  └─ Utils/OverlayDebug.cs    DEBUG 构建的游戏内调试覆盖层
+dist/<版本线>/FavoriteMusicPlayer/  构建产物（已 gitignore，不入库；经 Releases 分发）
 docs/                          音乐文件夹对照文档（中/英）
-tools/create_dist_tree.sh      重新生成 dist 文件夹树
+tools/create_dist_tree.sh      重新生成两条版本线的 dist 文件夹树
 README.md / README_EN.md       面向用户的说明（中/英）
 ```
 
@@ -29,10 +31,12 @@ README.md / README_EN.md       面向用户的说明（中/英）
 
 ```powershell
 cd src
-dotnet build -c Release        # 产物自动复制到 ../dist/FavoriteMusicPlayer/
+dotnet build FavoriteMusicPlayer.csproj -c Release       # SPT 4.0.13 版
+dotnet build FavoriteMusicPlayer.4_1.csproj -c Release   # SPT 4.1.x 版
 ```
 
 - .NET SDK 8+（当前机器 10.0.402），无需 Visual Studio，无 NuGet 包依赖（离线可构建）
+- 双 csproj 同目录共存：各自的 obj/bin 子目录隔离（obj\4013 / obj\416），`Common.props` 里已统一排除 `obj/**;bin/**` 防止兄弟项目产物混入源码通配——**改版本文本输出路径时勿破坏此机制**
 - `CS0618 isNetworkError/isHttpError 弃用` 警告是预期的（游戏 Unity 运行时下行为正确），不要"修复"成 `uwr.result`
 - 已安装 `ilspycmd`（dotnet global tool）用于反编译游戏程序集
 
@@ -46,6 +50,20 @@ dotnet build -c Release        # 产物自动复制到 ../dist/FavoriteMusicPlay
 
 **音乐文件夹映射**（`Plugin.MapFolderNames`，大小写不敏感，未知 ID 回退默认歌单）：
 `bigmap→customs, factory4_day|night→factory, Interchange→interchange, laboratory→labs, Labyrinth→labyrinth, Lighthouse→lighthouse, RezervBase→reserve, Sandbox|Sandbox_high→ground_zero, Shoreline→shoreline, TarkovStreets→streets, Terminal→terminal, Woods→woods`
+
+## SPT 4.1.x 兼容层（2026-10 对 4.1.6 / 基座 0.16.9.5 核验）
+
+4.1 做了大规模客户端反混淆，版本差异集中在 `Plugin.cs` 顶部的兼容层（常量 + 包装方法）与 `MenuMusicPatch` 的字段注入处，新增版本差异优先扩展该区域：
+
+| 4.0.13 | 4.1.x（SPT41 分支） | 位置 |
+|---|---|---|
+| `GUISounds.method_3()` | `PlayMenuBackgroundMusic()` | MenuMusicPlayMethod 常量 |
+| `GUISounds.method_8()` | `StopAudioCallbackCoroutine()` | MenuMusicStopCoroutineMethod 常量 |
+| 字段 `audioClip_0` | `_mainMenuMusic` | MenuMusicPatch Prefix 注入（`___audioClip_0` / `____mainMenuMusic`，注意下划线数量） |
+| `FlyingBulletSoundPlayer.method_3` | `FrameCoroutine`（签名同） | BulletWhizCoroutineMethod 常量 |
+| `HeadphonesItemClass` | `EFT.InventoryLogic.Headphones`（家族规律 XxxItemClass→Xxx） | Plugin/HeadsetPatch 的 using 别名 |
+
+其余 12 个补丁 + 全部支撑 API（method_7、audioSource_0/1/3/4、PlaySound、GetUIClip/GetEndGameClip、Player 三方法、GameWorld、EnvironmentType 等）**两版完全同名**。`FireBullet` 的 ammo 参数类型 4.1 变为 `Ammo`，但我们只按参数名绑定 `shotPosition`，不受影响。**坑（4.1.6 实测）**：`Grenade` 在 4.1.x 多了一个同名无参实例方法 `Explosion()`（内部调静态版），`AccessTools.Method` 按名取会拿到它导致 `grenadePosition` 绑定失败——已改为 `GetMethods().First(m => m.Name==... && m.IsStatic)` 按 static 筛选；同类风险（按名取方法遇新增重载）在游戏更新后需警惕。Awake 中的补丁启用已改为逐个 try/catch（单个失败不炸断整个插件，那曾让菜单音乐竞态雪上加霜）。裁剪不可行的结论两版通用（UnityPlayer.dll 逐字节相同，MD5 75b4bf8f）。
 
 ## 补丁目标清单（2026-10 已对 4.0.13 反编译逐一核验）
 
@@ -89,6 +107,7 @@ dotnet build -c Release        # 产物自动复制到 ../dist/FavoriteMusicPlay
 - **同声道单任务制（勿改回可叠加）**：`ScheduleDuck` 对已有任务的声道先移除旧任务、**继承最初基准音量**并立即恢复，再以新触发重置计时窗口——修复"快速连续交易时旧任务 Stop() 掐死新音效 + 把淡出音量误当基准导致后续音效逐单变哑"的恶性循环（2026-10 用户实测发现）
 - 配置（"5. Duration Limits"）：出生/死亡撤离/UI，0=不限；主菜单/环境/战斗**故意不加**（用户决策）
 - 0 = 时不登记/不计时，零干预
+- **UI 音效时长即时生效**：`UISoundsMaxLength.SettingChanged → Plugin.ReregisterUiSoundLimits()` 整体重登记（仅对之后触发的音效生效，不追溯正在播放的——用户决策不做追溯掐短；顺带清掉的死亡/撤离登记下次触发自动重建）
 
 ## 已知行为细节（改动前必读）
 

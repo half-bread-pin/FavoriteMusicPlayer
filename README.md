@@ -25,7 +25,7 @@ BepInEx 客户端插件（非服务器 mod），把游戏里的各类音乐/音�
 
 1. **前置要求**：SPT 4.0.13 游戏安装（自带 BepInEx 5）
 2. **卸载旧版**：如果你装过原版 Bobby's Music Player 或其它名称的音乐替换 mod，请先删除其插件文件夹——两个音乐 mod 同时运行会导致补丁冲突/双重播放
-3. **下载并复制文件**：从本仓库的 **Releases** 页面下载最新的 FavoriteMusicPlayer 压缩包并解压，把里面的**全部内容**复制到：
+3. **下载并复制文件**：从本仓库的 **Releases** 页面下载**与你 SPT 版本对应**的 FavoriteMusicPlayer 压缩包（4.0.13 / 4.1.x 两条版本线各自发布）并解压，把里面的**全部内容**复制到：
    ```
    游戏目录\BepInEx\plugins\FavoriteMusicPlayer\
    ```
@@ -76,13 +76,17 @@ FavoriteMusicPlayer\
 
 ## 编译
 
+一套源码、双版本目标（`src/Common.props` 为公共配置，版本差异集中在 `Plugin.cs` 顶部的兼容层）：
+
 ```powershell
 cd src
-dotnet build -c Release
+dotnet build FavoriteMusicPlayer.csproj -c Release       # SPT 4.0.13 → dist\4.0.13\FavoriteMusicPlayer\
+dotnet build FavoriteMusicPlayer.4_1.csproj -c Release   # SPT 4.1.x  → dist\4.1.6\FavoriteMusicPlayer\
 ```
 
-- 需 .NET SDK 8+（无 NuGet 依赖，离线可构建），产物自动复制到 `..\dist\FavoriteMusicPlayer\`（dist 不入库，仅供本地构建与打包 Releases 使用）
-- 构建只**读取**游戏目录 DLL（默认 `E:\ETF`，可 `-p:GameDir="D:\游戏目录"` 覆盖），不写入任何内容
+- 需 .NET SDK 8+（无 NuGet 依赖，离线可构建）
+- 4.0.13 目标默认引用 `E:\ETF`、4.1.x 目标默认引用 `F:\EFT416`（本机游戏目录），可用 `-p:GameDir="..."` 覆盖；构建只读取游戏目录 DLL，绝不写入
+- 发布 Release 压缩包时请按版本线命名（如 `FavoriteMusicPlayer-1.0.0-4.0.13.zip`），用户按其 SPT 版本选择下载
 - 项目无游戏文件，游戏更新后请先按 AGENTS.md 的核验流程比对补丁目标签名
 
 ## 故障排查

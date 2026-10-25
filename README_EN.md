@@ -25,7 +25,7 @@ A BepInEx client plugin (not a server mod) that replaces the game's music and UI
 
 1. **Requirements**: an SPT 4.0.13 installation (BepInEx 5 included)
 2. **Remove old versions**: if you have the original Bobby's Music Player or any other music-replacement mod installed, delete its plugin folder first — running two music mods together causes patch conflicts / doubled playback
-3. **Download & copy files**: download the latest FavoriteMusicPlayer archive from this repo's **Releases** page, extract it, and copy the **entire contents** into:
+3. **Download & copy files**: download the FavoriteMusicPlayer archive **matching your SPT version** (4.0.13 / 4.1.x are released as separate version lines) from this repo's **Releases** page, extract it, and copy the **entire contents** into:
    ```
    <game folder>\BepInEx\plugins\FavoriteMusicPlayer\
    ```
@@ -74,13 +74,17 @@ Config file: `BepInEx\config\halfBreadPin.FavoriteMusicPlayer.cfg`.
 
 ## Building
 
+One source tree, two version targets (`src/Common.props` holds shared config; version differences live in the compatibility layer at the top of `Plugin.cs`):
+
 ```powershell
 cd src
-dotnet build -c Release
+dotnet build FavoriteMusicPlayer.csproj -c Release       # SPT 4.0.13 → dist\4.0.13\FavoriteMusicPlayer\
+dotnet build FavoriteMusicPlayer.4_1.csproj -c Release   # SPT 4.1.x  → dist\4.1.6\FavoriteMusicPlayer\
 ```
 
-- Requires .NET SDK 8+ (no NuGet dependencies, builds offline); output is copied to `..\dist\FavoriteMusicPlayer\` (dist is not committed — it exists only for local builds and Release packaging)
-- The build only **reads** DLLs from the game folder (default `E:\ETF`, override with `-p:GameDir=...`); it never writes there
+- Requires .NET SDK 8+ (no NuGet dependencies, builds offline)
+- The 4.0.13 target references `E:\ETF` and the 4.1.x target references `F:\EFT416` by default (this machine's game folders); override with `-p:GameDir=...`. Builds only **read** game DLLs and never write to the game folder
+- Name release archives per version line (e.g. `FavoriteMusicPlayer-1.0.0-4.0.13.zip`) so users can pick the one matching their SPT version
 - The repo contains no game files. After a game update, verify patch target signatures first (see AGENTS_EN.md)
 
 ## Troubleshooting

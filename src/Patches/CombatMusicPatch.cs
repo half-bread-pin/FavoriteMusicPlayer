@@ -1,3 +1,4 @@
+using System.Linq;
 using Comfort.Common;
 using EFT;
 using HarmonyLib;
@@ -14,10 +15,10 @@ namespace FavoriteMusicPlayer.Patches
     {
         protected override MethodBase GetTargetMethod()
         {
-            var method = AccessTools.Method(typeof(FlyingBulletSoundPlayer), nameof(FlyingBulletSoundPlayer.method_3));
+            var method = AccessTools.Method(typeof(FlyingBulletSoundPlayer), Plugin.BulletWhizCoroutineMethod);
             if (method == null)
             {
-                Plugin.LogSource.LogError("ShotAtPatch: 找不到 FlyingBulletSoundPlayer.method_3，被击中音效战斗触发补丁未生效");
+                Plugin.LogSource.LogError("ShotAtPatch: 找不到子弹掠过音协程（" + Plugin.BulletWhizCoroutineMethod + "），被击中音效战斗触发补丁未生效");
             }
             return method;
         }
@@ -160,10 +161,14 @@ namespace FavoriteMusicPlayer.Patches
     {
         protected override MethodBase GetTargetMethod()
         {
-            var method = AccessTools.Method(typeof(Grenade), nameof(Grenade.Explosion));
+            // 4.1.x 的 Grenade 额外有一个同名无参实例方法 Explosion()（内部再调静态版），
+            // 按名查找会拿到第一个匹配（无参的那个），导致 Prefix 的 grenadePosition 绑定失败。
+            // 两个版本里真正带 Vector3 参数的目标都是 static，故按 IsStatic 挑选。
+            var method = typeof(Grenade).GetMethods()
+                .FirstOrDefault(m => m.Name == nameof(Grenade.Explosion) && m.IsStatic);
             if (method == null)
             {
-                Plugin.LogSource.LogError("GrenadePatch: 找不到 Grenade.Explosion，手雷爆炸战斗触发补丁未生效");
+                Plugin.LogSource.LogError("GrenadePatch: 找不到 Grenade.Explosion（static），手雷爆炸战斗触发补丁未生效");
             }
             return method;
         }

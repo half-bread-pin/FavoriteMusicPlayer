@@ -2,6 +2,7 @@ using BepInEx;
 using BepInEx.Configuration;
 using BepInEx.Logging;
 using FavoriteMusicPlayer.Patches;
+using SPT.Reflection.Patching;
 using Comfort.Common;
 using EFT;
 using EFT.InventoryLogic;
@@ -16,7 +17,11 @@ using FavoriteMusicPlayer.Utils;
 #endif
 using UnityEngine;
 using UnityEngine.Networking;
+#if SPT41
+using HeadsetClass = EFT.InventoryLogic.Headphones;
+#else
 using HeadsetClass = HeadphonesItemClass;
+#endif
 
 namespace FavoriteMusicPlayer
 {
@@ -46,6 +51,44 @@ namespace FavoriteMusicPlayer
     [BepInPlugin("halfBreadPin.FavoriteMusicPlayer", "FavoriteMusicPlayer", "1.0.0")]
     public class Plugin : BaseUnityPlugin
     {
+        // ===== SPT 版本兼容层 =====
+        // SPT 4.1.x 对客户端做了大规模反混淆（详见 AGENTS.md 差异表），
+        // 同一套源码经双 csproj 条件编译产出两个版本：
+        //   FavoriteMusicPlayer.csproj      → SPT 4.0.13（默认，GameDir=E:\ETF）
+        //   FavoriteMusicPlayer.4_1.csproj  → SPT 4.1.x（SPT41 常量，GameDir=F:\EFT416）
+        // 版本差异集中在下面的常量/包装方法与 MenuMusicPatch 的字段注入处，
+        // 新增版本差异时优先扩展本区域，避免 #if 散落各文件。
+#if SPT41
+        internal const string MenuMusicPlayMethod = nameof(GUISounds.PlayMenuBackgroundMusic);
+        internal const string MenuMusicStopCoroutineMethod = nameof(GUISounds.StopAudioCallbackCoroutine);
+#else
+        internal const string MenuMusicPlayMethod = nameof(GUISounds.method_3);
+        internal const string MenuMusicStopCoroutineMethod = nameof(GUISounds.method_8);
+#endif
+        internal const string BulletWhizCoroutineMethod =
+#if SPT41
+            nameof(FlyingBulletSoundPlayer.FrameCoroutine);
+#else
+            nameof(FlyingBulletSoundPlayer.method_3);
+#endif
+
+        internal static void PlayMenuMusic()
+        {
+#if SPT41
+            Singleton<GUISounds>.Instance.PlayMenuBackgroundMusic();
+#else
+            Singleton<GUISounds>.Instance.method_3();
+#endif
+        }
+
+        internal static void StopMenuMusicCoroutine()
+        {
+#if SPT41
+            Singleton<GUISounds>.Instance.StopAudioCallbackCoroutine();
+#else
+            Singleton<GUISounds>.Instance.method_8();
+#endif
+        }
         public static bool InRaid { get; set; } = false;
 
 #if DEBUG
@@ -237,6 +280,36 @@ namespace FavoriteMusicPlayer
         {
             maxSeconds = 0f;
             return clip != null && LimitedClips.TryGetValue(clip, out maxSeconds);
+        }
+
+        // UI 音效是启动时预加载的，时长登记随加载时的配置值固定；
+        // 此方法在配置变化时（SettingChanged）按新值整体重登记，使修改即时生效
+        //（对之后触发的音效生效，正在播放中的不受追溯）。
+        // 顺带清掉的死亡/撤离登记会在各自下次触发时自动重建，无功能损失。
+        internal static void ReregisterUiSoundLimits()
+        {
+            LimitedClips.Clear();
+            float maxSeconds = UISoundsMaxLength.Value;
+            if (maxSeconds <= 0f)
+            {
+                LogSource.LogInfo("UI 音效时长限制已关闭（0=不限），已清除全部登记");
+                return;
+            }
+            foreach (List<AudioClip> clips in UISoundsPatch.uiSoundsClips)
+            {
+                if (clips == null)
+                {
+                    continue;
+                }
+                foreach (AudioClip clip in clips)
+                {
+                    if (clip != null)
+                    {
+                        LimitedClips[clip] = maxSeconds;
+                    }
+                }
+            }
+            LogSource.LogInfo("UI 音效时长限制已更新为 " + maxSeconds.ToString("F0") + "s，对之后触发的音效即时生效");
         }
 
         internal class DuckTask
@@ -600,24 +673,41 @@ namespace FavoriteMusicPlayer
                 "死亡/撤离结算音乐的最长播放时长（秒）。0 = 不限制。超过上限的曲目会在到时自动淡出并停止。",
                 new AcceptableValueRange<float>(0f, 3600f));
             UISoundsMaxLength = BindLocalized(durationLimitsSettings, durationLimitsSettingsZh, "UI sounds max length (Seconds)", "UI 音效最长时长（秒）",
-                0f, "Maximum playback length of the UI sounds in seconds. 0 = unlimited. When a sound exceeds this length it fades out and stops at the limit. Takes effect after the sounds are reloaded (restart or return from a raid).",
-                "界面音效的最长播放时长（秒）。0 = 不限制。超过上限的音效会在到时自动淡出并停止。修改后需在音效重新加载时生效（重启或打完一局返回）。",
+                0f, "Maximum playback length of the UI sounds in seconds. 0 = unlimited. When a sound exceeds this length it fades out and stops at the limit. Changes apply immediately to subsequently triggered sounds.",
+                "界面音效的最长播放时长（秒）。0 = 不限制。超过上限的音效会在到时自动淡出并停止。修改即时生效（对之后触发的音效生效）。",
                 new AcceptableValueRange<float>(0f, 3600f));
+            UISoundsMaxLength.SettingChanged += (_, __) => ReregisterUiSoundLimits();
             environmentDict[EnvironmentType.Outdoor] = 1f;
 
-            new MenuMusicPatch().Enable();
-            new RaidEndMusicPatch().Enable();
-            new UISoundsPatch().Enable();
-            new ShotAtPatch().Enable();
-            new PlayerFiringPatch().Enable();
-            new DamageTakenPatch().Enable();
-            new ShotFiredNearPatch().Enable();
-            new GrenadePatch().Enable();
-            new MenuMusicMethod8Patch().Enable();
-            new StopMenuMusicPatch().Enable();
-            new OnGameWorldStartPatch().Enable();
-            new OnGameWorldDisposePatch().Enable();
-            new PlaySoundDuckPatch().Enable();
+            // 单个补丁启用失败（如游戏更新导致目标绑定不上）只记错误并继续，
+            // 绝不能让一个补丁炸断整个 Awake——否则后续补丁、音频加载全部缺失
+            ModulePatch[] patches =
+            {
+                new MenuMusicPatch(),
+                new RaidEndMusicPatch(),
+                new UISoundsPatch(),
+                new ShotAtPatch(),
+                new PlayerFiringPatch(),
+                new DamageTakenPatch(),
+                new ShotFiredNearPatch(),
+                new GrenadePatch(),
+                new MenuMusicMethod8Patch(),
+                new StopMenuMusicPatch(),
+                new OnGameWorldStartPatch(),
+                new OnGameWorldDisposePatch(),
+                new PlaySoundDuckPatch()
+            };
+            foreach (ModulePatch patch in patches)
+            {
+                try
+                {
+                    patch.Enable();
+                }
+                catch (Exception e)
+                {
+                    LogSource.LogError("补丁 " + patch.GetType().Name + " 启用失败（该功能不生效，其余不受影响）: " + e.Message);
+                }
+            }
             MenuMusicPatch.LoadAudioClips();
             UISoundsPatch.LoadUIClips();
 
@@ -895,7 +985,7 @@ namespace FavoriteMusicPlayer
                 else if (Input.GetKeyDown(Plugin.PauseTrack.Value.MainKey) && paused)
                 {
                     Audio.menuMusicAudioSource.UnPause();
-                    menuMusicCoroutine = StaticManager.Instance.WaitSeconds(pausedTime, new Action(Singleton<GUISounds>.Instance.method_3));
+                    menuMusicCoroutine = StaticManager.Instance.WaitSeconds(pausedTime, new Action(Plugin.PlayMenuMusic));
                     paused = false;
                 }
                 if (Input.GetKeyDown(Plugin.RestartTrack.Value.MainKey))
@@ -911,7 +1001,7 @@ namespace FavoriteMusicPlayer
                     }
                     StaticManager.Instance.StopCoroutine(menuMusicCoroutine);
                     paused = false;
-                    Singleton<GUISounds>.Instance.method_3();
+                    Plugin.PlayMenuMusic();
                 }
                 if (Input.GetKeyDown(Plugin.PreviousTrack.Value.MainKey))
                 {
@@ -923,14 +1013,14 @@ namespace FavoriteMusicPlayer
                     }
                     StaticManager.Instance.StopCoroutine(menuMusicCoroutine);
                     paused = false;
-                    Singleton<GUISounds>.Instance.method_3();
+                    Plugin.PlayMenuMusic();
                 }
                 if (Input.GetKeyDown(Plugin.SkipTrack.Value.MainKey))
                 {
                     Audio.menuMusicAudioSource.Stop();
                     StaticManager.Instance.StopCoroutine(menuMusicCoroutine);
                     paused = false;
-                    Singleton<GUISounds>.Instance.method_3();
+                    Plugin.PlayMenuMusic();
                 }
             }
         }
