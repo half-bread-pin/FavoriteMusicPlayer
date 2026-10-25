@@ -1,13 +1,13 @@
 # FavoriteMusicPlayer（塔科夫离线版自定义音乐播放器）
 
 > 根据原 [Bobby's Music Player](https://github.com/BobbyRenzobbi/Bobbys-Music-Player) 项目（作者 BobbyRenzobbi）由 ZCode（AI 编程助手）编写移植。
-> 特别感谢原作者 BobbyRenzobbi 的开源分享，以及 SPT 社区编写的客户端 mod 开发文档——没有这些基础就没有本项目。原项目基于 SPT 3.11.x，本项目将其完整移植到 SPT 4.0.13 并新增多项改进。
+> 特别感谢原作者 BobbyRenzobbi 的开源分享，以及 SPT 社区编写的客户端 mod 开发文档——没有这些基础就没有本项目。原项目基于 SPT 3.11.x，本项目将其完整移植到 SPT 4.0.13 / 4.1.6 并新增多项改进。
 
 [English version](README_EN.md)
 
 ## 简介
 
-BepInEx 客户端插件（非服务器 mod），把游戏里的各类音乐/音效替换成你自己的音乐文件，适用于 **SPT（逃离塔科夫离线版）4.0.13**（基座游戏 0.16.9）。也可在本机编译时通过 `-p:GameDir` 支持其它 4.0.x 安装。
+BepInEx 客户端插件（非服务器 mod），把游戏里的各类音乐/音效替换成你自己的音乐文件，适用于 **SPT（逃离塔科夫离线版）4.0.13 与 4.1.6**（基座游戏 0.16.9）——两条版本线各自发布安装包，同一套源码构建。
 
 | 功能 | 说明 |
 |---|---|
@@ -23,20 +23,23 @@ BepInEx 客户端插件（非服务器 mod），把游戏里的各类音乐/音�
 
 ## 安装
 
-1. **前置要求**：SPT 4.0.13 游戏安装（自带 BepInEx 5）
+1. **前置要求**：SPT 4.0.13 或 4.1.6 游戏安装（自带 BepInEx 5；更低的 4.1.x 未测试）
 2. **卸载旧版**：如果你装过原版 Bobby's Music Player 或其它名称的音乐替换 mod，请先删除其插件文件夹——两个音乐 mod 同时运行会导致补丁冲突/双重播放
-3. **下载并复制文件**：从本仓库的 **Releases** 页面下载**与你 SPT 版本对应**的 FavoriteMusicPlayer 压缩包（4.0.13 / 4.1.x 两条版本线各自发布）并解压，把里面的**全部内容**复制到：
-   ```
-   游戏目录\BepInEx\plugins\FavoriteMusicPlayer\
-   ```
-   复制完的结构（注意 DLL 不要多套一层文件夹）：
-   ```
-   BepInEx\plugins\FavoriteMusicPlayer\
-   ├── FavoriteMusicPlayer.dll
-   ├── CustomMenuMusic\ ... DeathMusic\ ... UISounds\ ...
-   ```
+3. **下载并复制文件**：从本仓库的 **Releases** 页面下载**与你 SPT 版本对应**的 FavoriteMusicPlayer 压缩包（4.0.13 / 4.1.6 两条版本线各自发布）并解压，把里面的**全部内容**复制到 `游戏目录\BepInEx\plugins\FavoriteMusicPlayer\`
 4. **放音乐**：把音频文件放进对应文件夹（对照下面的表格，或看每个文件夹里的 aboutThisFolder.txt）
 5. **启动游戏**：主菜单按 F1（部分安装为 F12）打开 ConfigurationManager，能看到 "FavoriteMusicPlayer" 分节即安装成功
+
+复制后的目录结构（注意 DLL 要直接位于 `FavoriteMusicPlayer\` 下，不要多套一层文件夹）：
+
+```
+BepInEx\plugins\FavoriteMusicPlayer\
+├── FavoriteMusicPlayer.dll
+├── CustomMenuMusic\
+├── DeathMusic\
+├── ExtractMusic\
+├── Soundtrack\
+└── UISounds\
+```
 
 > 提示：mod 首次启动会自动创建全部音乐文件夹（即使只复制了 DLL），之后直接往里放文件即可。
 > 卸载：删除 `BepInEx\plugins\FavoriteMusicPlayer\` 文件夹与 `BepInEx\config\halfBreadPin.FavoriteMusicPlayer.cfg`。
@@ -81,11 +84,11 @@ FavoriteMusicPlayer\
 ```powershell
 cd src
 dotnet build FavoriteMusicPlayer.csproj -c Release       # SPT 4.0.13 → dist\4.0.13\FavoriteMusicPlayer\
-dotnet build FavoriteMusicPlayer.4_1.csproj -c Release   # SPT 4.1.x  → dist\4.1.6\FavoriteMusicPlayer\
+dotnet build FavoriteMusicPlayer.4_1.csproj -c Release   # SPT 4.1.6  → dist\4.1.6\FavoriteMusicPlayer\
 ```
 
 - 需 .NET SDK 8+（无 NuGet 依赖，离线可构建）
-- 4.0.13 目标默认引用 `E:\ETF`、4.1.x 目标默认引用 `F:\EFT416`（本机游戏目录），可用 `-p:GameDir="..."` 覆盖；构建只读取游戏目录 DLL，绝不写入
+- 4.0.13 目标默认引用 `E:\ETF`、4.1.6 目标默认引用 `F:\EFT416`（本机游戏目录），可用 `-p:GameDir="..."` 覆盖；构建只读取游戏目录 DLL，绝不写入
 - 发布 Release 压缩包时请按版本线命名（如 `FavoriteMusicPlayer-1.0.0-4.0.13.zip`），用户按其 SPT 版本选择下载
 - 项目无游戏文件，游戏更新后请先按 AGENTS.md 的核验流程比对补丁目标签名
 

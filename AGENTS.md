@@ -16,7 +16,7 @@
 ```
 src/                          源码（在此开发）
   ├─ FavoriteMusicPlayer.csproj     4.0.13 构建目标（GameDir=E:\ETF → dist\4.0.13\）
-  ├─ FavoriteMusicPlayer.4_1.csproj 4.1.x 构建目标（SPT41 常量，GameDir=F:\EFT416 → dist\4.1.6\）
+  ├─ FavoriteMusicPlayer.4_1.csproj 4.1.6 构建目标（SPT41 常量，GameDir=F:\EFT416 → dist\4.1.6\）
   ├─ Common.props                   公共构建配置（双 csproj 导入，勿在单侧 csproj 里改公共项）
   ├─ Plugin.cs                BepInEx 插件入口 + 点唱机 + 音频加载 + 时长限制 + SPT 版本兼容层
   ├─ Patches/                 全部 Harmony 补丁（13 个）
@@ -32,7 +32,7 @@ README.md / README_EN.md       面向用户的说明（中/英）
 ```powershell
 cd src
 dotnet build FavoriteMusicPlayer.csproj -c Release       # SPT 4.0.13 版
-dotnet build FavoriteMusicPlayer.4_1.csproj -c Release   # SPT 4.1.x 版
+dotnet build FavoriteMusicPlayer.4_1.csproj -c Release   # SPT 4.1.6 版
 ```
 
 - .NET SDK 8+（当前机器 10.0.402），无需 Visual Studio，无 NuGet 包依赖（离线可构建）
@@ -51,11 +51,11 @@ dotnet build FavoriteMusicPlayer.4_1.csproj -c Release   # SPT 4.1.x 版
 **音乐文件夹映射**（`Plugin.MapFolderNames`，大小写不敏感，未知 ID 回退默认歌单）：
 `bigmap→customs, factory4_day|night→factory, Interchange→interchange, laboratory→labs, Labyrinth→labyrinth, Lighthouse→lighthouse, RezervBase→reserve, Sandbox|Sandbox_high→ground_zero, Shoreline→shoreline, TarkovStreets→streets, Terminal→terminal, Woods→woods`
 
-## SPT 4.1.x 兼容层（2026-10 对 4.1.6 / 基座 0.16.9.5 核验）
+## SPT 4.1.6 兼容层（2026-10 对 4.1.6 / 基座 0.16.9.5 核验）
 
 4.1 做了大规模客户端反混淆，版本差异集中在 `Plugin.cs` 顶部的兼容层（常量 + 包装方法）与 `MenuMusicPatch` 的字段注入处，新增版本差异优先扩展该区域：
 
-| 4.0.13 | 4.1.x（SPT41 分支） | 位置 |
+| 4.0.13 | 4.1.6（SPT41 分支） | 位置 |
 |---|---|---|
 | `GUISounds.method_3()` | `PlayMenuBackgroundMusic()` | MenuMusicPlayMethod 常量 |
 | `GUISounds.method_8()` | `StopAudioCallbackCoroutine()` | MenuMusicStopCoroutineMethod 常量 |
@@ -63,7 +63,7 @@ dotnet build FavoriteMusicPlayer.4_1.csproj -c Release   # SPT 4.1.x 版
 | `FlyingBulletSoundPlayer.method_3` | `FrameCoroutine`（签名同） | BulletWhizCoroutineMethod 常量 |
 | `HeadphonesItemClass` | `EFT.InventoryLogic.Headphones`（家族规律 XxxItemClass→Xxx） | Plugin/HeadsetPatch 的 using 别名 |
 
-其余 12 个补丁 + 全部支撑 API（method_7、audioSource_0/1/3/4、PlaySound、GetUIClip/GetEndGameClip、Player 三方法、GameWorld、EnvironmentType 等）**两版完全同名**。`FireBullet` 的 ammo 参数类型 4.1 变为 `Ammo`，但我们只按参数名绑定 `shotPosition`，不受影响。**坑（4.1.6 实测）**：`Grenade` 在 4.1.x 多了一个同名无参实例方法 `Explosion()`（内部调静态版），`AccessTools.Method` 按名取会拿到它导致 `grenadePosition` 绑定失败——已改为 `GetMethods().First(m => m.Name==... && m.IsStatic)` 按 static 筛选；同类风险（按名取方法遇新增重载）在游戏更新后需警惕。Awake 中的补丁启用已改为逐个 try/catch（单个失败不炸断整个插件，那曾让菜单音乐竞态雪上加霜）。裁剪不可行的结论两版通用（UnityPlayer.dll 逐字节相同，MD5 75b4bf8f）。
+其余 12 个补丁 + 全部支撑 API（method_7、audioSource_0/1/3/4、PlaySound、GetUIClip/GetEndGameClip、Player 三方法、GameWorld、EnvironmentType 等）**两版完全同名**。`FireBullet` 的 ammo 参数类型 4.1 变为 `Ammo`，但我们只按参数名绑定 `shotPosition`，不受影响。**坑（4.1.6 实测）**：`Grenade` 在 4.1.6 多了一个同名无参实例方法 `Explosion()`（内部调静态版），`AccessTools.Method` 按名取会拿到它导致 `grenadePosition` 绑定失败——已改为 `GetMethods().First(m => m.Name==... && m.IsStatic)` 按 static 筛选；同类风险（按名取方法遇新增重载）在游戏更新后需警惕。Awake 中的补丁启用已改为逐个 try/catch（单个失败不炸断整个插件，那曾让菜单音乐竞态雪上加霜）。裁剪不可行的结论两版通用（UnityPlayer.dll 逐字节相同，MD5 75b4bf8f）。
 
 ## 补丁目标清单（2026-10 已对 4.0.13 反编译逐一核验）
 

@@ -1,13 +1,13 @@
 # FavoriteMusicPlayer (Custom Music Player for SPT — Escape from Tarkov Offline)
 
 > Written and ported by ZCode (AI coding assistant), based on the original [Bobby's Music Player](https://github.com/BobbyRenzobbi/Bobbys-Music-Player) project by BobbyRenzobbi.
-> Special thanks to the original author for open-sourcing his work, and to the SPT community's client modding documentation — this project would not exist without them. The original targets SPT 3.11.x; this project is a full port to SPT 4.0.13 with several improvements.
+> Special thanks to the original author for open-sourcing his work, and to the SPT community's client modding documentation — this project would not exist without them. The original targets SPT 3.11.x; this project is a full port to SPT 4.0.13 / 4.1.6 with several improvements.
 
 [中文版本](README.md)
 
 ## Overview
 
-A BepInEx client plugin (not a server mod) that replaces the game's music and UI sounds with your own audio files. Built for **SPT 4.0.13** (base game 0.16.9); other 4.0.x installs can be targeted at build time via `-p:GameDir`.
+A BepInEx client plugin (not a server mod) that replaces the game's music and UI sounds with your own audio files. Built for **SPT 4.0.13 and 4.1.6** (base game 0.16.9) — two version lines released separately, built from one source tree.
 
 | Feature | Description |
 |---|---|
@@ -23,20 +23,23 @@ A BepInEx client plugin (not a server mod) that replaces the game's music and UI
 
 ## Installation
 
-1. **Requirements**: an SPT 4.0.13 installation (BepInEx 5 included)
+1. **Requirements**: an SPT 4.0.13 or 4.1.6 installation (BepInEx 5 included; lower 4.1.x builds untested)
 2. **Remove old versions**: if you have the original Bobby's Music Player or any other music-replacement mod installed, delete its plugin folder first — running two music mods together causes patch conflicts / doubled playback
-3. **Download & copy files**: download the FavoriteMusicPlayer archive **matching your SPT version** (4.0.13 / 4.1.x are released as separate version lines) from this repo's **Releases** page, extract it, and copy the **entire contents** into:
-   ```
-   <game folder>\BepInEx\plugins\FavoriteMusicPlayer\
-   ```
-   Expected layout (don't nest the DLL one level deeper):
-   ```
-   BepInEx\plugins\FavoriteMusicPlayer\
-   ├── FavoriteMusicPlayer.dll
-   ├── CustomMenuMusic\ ... DeathMusic\ ... UISounds\ ...
-   ```
+3. **Download & copy files**: download the FavoriteMusicPlayer archive **matching your SPT version** (4.0.13 / 4.1.6 are released as separate version lines) from this repo's **Releases** page, extract it, and copy the **entire contents** into `<game folder>\BepInEx\plugins\FavoriteMusicPlayer\`
 4. **Add music**: drop audio files into the matching folders (see the table below, or the aboutThisFolder.txt in each folder)
 5. **Launch**: press F1 (F12 on some setups) in the main menu — a "FavoriteMusicPlayer" section in ConfigurationManager means it works
+
+Expected layout after copying (the DLL must sit directly inside `FavoriteMusicPlayer\` — don't nest it one level deeper):
+
+```
+BepInEx\plugins\FavoriteMusicPlayer\
+├── FavoriteMusicPlayer.dll
+├── CustomMenuMusic\
+├── DeathMusic\
+├── ExtractMusic\
+├── Soundtrack\
+└── UISounds\
+```
 
 > Tip: the mod auto-creates the full music folder tree on first launch (even if you only copied the DLL).
 > Uninstall: delete `BepInEx\plugins\FavoriteMusicPlayer\` and `BepInEx\config\halfBreadPin.FavoriteMusicPlayer.cfg`.
@@ -79,11 +82,11 @@ One source tree, two version targets (`src/Common.props` holds shared config; ve
 ```powershell
 cd src
 dotnet build FavoriteMusicPlayer.csproj -c Release       # SPT 4.0.13 → dist\4.0.13\FavoriteMusicPlayer\
-dotnet build FavoriteMusicPlayer.4_1.csproj -c Release   # SPT 4.1.x  → dist\4.1.6\FavoriteMusicPlayer\
+dotnet build FavoriteMusicPlayer.4_1.csproj -c Release   # SPT 4.1.6  → dist\4.1.6\FavoriteMusicPlayer\
 ```
 
 - Requires .NET SDK 8+ (no NuGet dependencies, builds offline)
-- The 4.0.13 target references `E:\ETF` and the 4.1.x target references `F:\EFT416` by default (this machine's game folders); override with `-p:GameDir=...`. Builds only **read** game DLLs and never write to the game folder
+- The 4.0.13 target references `E:\ETF` and the 4.1.6 target references `F:\EFT416` by default (this machine's game folders); override with `-p:GameDir=...`. Builds only **read** game DLLs and never write to the game folder
 - Name release archives per version line (e.g. `FavoriteMusicPlayer-1.0.0-4.0.13.zip`) so users can pick the one matching their SPT version
 - The repo contains no game files. After a game update, verify patch target signatures first (see AGENTS_EN.md)
 

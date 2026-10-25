@@ -1,5 +1,5 @@
 <!-- FavoriteMusicPlayer 公共构建配置：由 FavoriteMusicPlayer.csproj(4.0.13) 和
-     FavoriteMusicPlayer.4_1.csproj(4.1.x) 导入，差异项（GameDir/DistLine/SPT41）在各 csproj 中先定义 -->
+     FavoriteMusicPlayer.4_1.csproj(4.1.6) 导入，差异项（GameDir/DistLine/SPT41）在各 csproj 中先定义 -->
 <Project>
   <PropertyGroup>
     <TargetFramework>netstandard2.1</TargetFramework>

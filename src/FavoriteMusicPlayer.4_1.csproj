@@ -1,4 +1,4 @@
-<!-- SPT 4.1.x（基座 0.16.9.5，大规模反混淆命名）构建目标 -->
+<!-- SPT 4.1.6（基座 0.16.9.5，大规模反混淆命名）构建目标 -->
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
