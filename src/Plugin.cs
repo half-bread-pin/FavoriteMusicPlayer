@@ -578,15 +578,15 @@ namespace FavoriteMusicPlayer
             // 绑定顺序必须保持 1 → 2 → 3 → 4 首次出现，否则菜单分组乱序。
             Language = BindLocalized(languageSettings, languageSettingsZh, "Language", "Language / 语言",
                 ELanguage.English,
-                "Display language of this plugin's settings panel (English / 中文). Reopen the panel to apply; restart the game if unchanged.",
-                "本插件设置面板的显示语言。切换后重新打开面板生效，若未变化请重启游戏。");
+                "Display language of this plugin's settings panel (English / 中文). Reopen the panel to see the change — no game restart needed.",
+                "本插件设置面板的显示语言。切换后重新打开面板即可看到新语言，无需重启游戏。");
             Language.SettingChanged += (_, __) =>
             {
                 foreach (var loc in LocalizedEntries)
                 {
                     ApplyEntryLanguage(loc);
                 }
-                LogSource.LogInfo("语言切换为 " + (Language.Value == ELanguage.Chinese ? "中文" : "English") + "，重新打开配置面板生效（如未变化请重启游戏）");
+                LogSource.LogInfo("语言切换为 " + (Language.Value == ELanguage.Chinese ? "中文" : "English") + "，重新打开配置面板即可看到");
             };
 
             RestartTrack = BindLocalized(generalSettings, generalSettingsZh, "Restart track button", "重播当前曲目（快捷键）",
@@ -975,20 +975,20 @@ namespace FavoriteMusicPlayer
         {
             if (!SoundtrackJukebox.soundtrackCalled && Audio.menuMusicAudioSource != null)
             {
-                if (Input.GetKeyDown(Plugin.PauseTrack.Value.MainKey) && Audio.menuMusicAudioSource.isPlaying)
+                if (Plugin.PauseTrack.Value.IsDown() && Audio.menuMusicAudioSource.isPlaying)
                 {
                     Audio.menuMusicAudioSource.Pause();
                     StaticManager.Instance.StopCoroutine(menuMusicCoroutine);
                     pausedTime = Audio.menuMusicAudioSource.clip.length - Audio.menuMusicAudioSource.time;
                     paused = true;
                 }
-                else if (Input.GetKeyDown(Plugin.PauseTrack.Value.MainKey) && paused)
+                else if (Plugin.PauseTrack.Value.IsDown() && paused)
                 {
                     Audio.menuMusicAudioSource.UnPause();
                     menuMusicCoroutine = StaticManager.Instance.WaitSeconds(pausedTime, new Action(Plugin.PlayMenuMusic));
                     paused = false;
                 }
-                if (Input.GetKeyDown(Plugin.RestartTrack.Value.MainKey))
+                if (Plugin.RestartTrack.Value.IsDown())
                 {
                     Audio.menuMusicAudioSource.Stop();
                     if (MenuMusicPatch.trackCounter != 0)
@@ -1003,7 +1003,7 @@ namespace FavoriteMusicPlayer
                     paused = false;
                     Plugin.PlayMenuMusic();
                 }
-                if (Input.GetKeyDown(Plugin.PreviousTrack.Value.MainKey))
+                if (Plugin.PreviousTrack.Value.IsDown())
                 {
                     Audio.menuMusicAudioSource.Stop();
                     MenuMusicPatch.trackCounter -= 2;
@@ -1015,7 +1015,7 @@ namespace FavoriteMusicPlayer
                     paused = false;
                     Plugin.PlayMenuMusic();
                 }
-                if (Input.GetKeyDown(Plugin.SkipTrack.Value.MainKey))
+                if (Plugin.SkipTrack.Value.IsDown())
                 {
                     Audio.menuMusicAudioSource.Stop();
                     StaticManager.Instance.StopCoroutine(menuMusicCoroutine);
@@ -1062,20 +1062,20 @@ namespace FavoriteMusicPlayer
             {
                 return;
             }
-            if (Input.GetKeyDown(Plugin.PauseTrack.Value.MainKey) && Audio.soundtrackAudioSource.isPlaying)
+            if (Plugin.PauseTrack.Value.IsDown() && Audio.soundtrackAudioSource.isPlaying)
             {
                 Audio.soundtrackAudioSource.Pause();
                 StaticManager.Instance.StopCoroutine(soundtrackCoroutine);
                 pausedTime = Audio.soundtrackAudioSource.clip.length - Audio.soundtrackAudioSource.time;
                 paused = true;
             }
-            else if (Input.GetKeyDown(Plugin.PauseTrack.Value.MainKey) && paused)
+            else if (Plugin.PauseTrack.Value.IsDown() && paused)
             {
                 Audio.soundtrackAudioSource.UnPause();
                 soundtrackCoroutine = StaticManager.Instance.WaitSeconds(pausedTime, new Action(PlaySoundtrack));
                 paused = false;
             }
-            if (Input.GetKeyDown(Plugin.RestartTrack.Value.MainKey))
+            if (Plugin.RestartTrack.Value.IsDown())
             {
                 Audio.soundtrackAudioSource.Stop();
                 if (trackCounter != 0)
@@ -1090,7 +1090,7 @@ namespace FavoriteMusicPlayer
                 paused = false;
                 PlaySoundtrack();
             }
-            if (Input.GetKeyDown(Plugin.PreviousTrack.Value.MainKey))
+            if (Plugin.PreviousTrack.Value.IsDown())
             {
                 Audio.soundtrackAudioSource.Stop();
                 trackCounter -= 2;
@@ -1102,7 +1102,7 @@ namespace FavoriteMusicPlayer
                 paused = false;
                 PlaySoundtrack();
             }
-            if (Input.GetKeyDown(Plugin.SkipTrack.Value.MainKey))
+            if (Plugin.SkipTrack.Value.IsDown())
             {
                 Audio.soundtrackAudioSource.Stop();
                 StaticManager.Instance.StopCoroutine(soundtrackCoroutine);
