@@ -48,7 +48,7 @@ namespace FavoriteMusicPlayer
     // - 地图歌单查找大小写不敏感，未知地图回退到默认歌单
     // - 新增 terminal（终点站）、labyrinth（迷宫）地图专属音乐文件夹
     // - 音频枚举只认白名单扩展名，文件夹里的说明文件不会被当作音乐加载
-    [BepInPlugin("halfBreadPin.FavoriteMusicPlayer", "FavoriteMusicPlayer", "1.0.0")]
+    [BepInPlugin("com.halfbreadpin.favoritemusicplayer", "halfbreadpin-FavoriteMusicPlayer", "1.0.0")]
     public class Plugin : BaseUnityPlugin
     {
         // ===== SPT 版本兼容层 =====

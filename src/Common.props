@@ -93,9 +93,9 @@
     </Reference>
   </ItemGroup>
 
-  <!-- Release 构建后把 DLL 复制到 dist/<版本线>/FavoriteMusicPlayer/（打包目录，不直接写游戏目录） -->
+  <!-- Release 构建后把 DLL 与 LICENSE 复制到 dist/<版本线>/BepInEx/plugins/FavoriteMusicPlayer/（压缩包解压即入 SPT 根目录的布局，sp-mod §2.1/§6.1） -->
   <Target Name="CopyToDist" AfterTargets="Build" Condition="'$(Configuration)' == 'Release'">
-    <Copy SourceFiles="$(TargetPath)" DestinationFolder="$(ProjectDir)..\dist\$(DistLine)\FavoriteMusicPlayer\" />
-    <Message Importance="high" Text="已复制 $(TargetFileName) 到 dist\$(DistLine)\FavoriteMusicPlayer\" />
+    <Copy SourceFiles="$(TargetPath);$(ProjectDir)..\LICENSE" DestinationFolder="$(ProjectDir)..\dist\$(DistLine)\BepInEx\plugins\FavoriteMusicPlayer\" />
+    <Message Importance="high" Text="已复制 $(TargetFileName) 与 LICENSE 到 dist\$(DistLine)\BepInEx\plugins\FavoriteMusicPlayer\" />
   </Target>
 </Project>

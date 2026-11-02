@@ -25,11 +25,11 @@ A BepInEx client plugin (not a server mod) that replaces the game's music and UI
 
 1. **Requirements**: an SPT 4.0.13 or 4.1.6 installation (BepInEx 5 included; lower 4.1.x builds untested)
 2. **Remove old versions**: if you have the original Bobby's Music Player or any other music-replacement mod installed, delete its plugin folder first — running two music mods together causes patch conflicts / doubled playback
-3. **Download & copy files**: download the FavoriteMusicPlayer archive **matching your SPT version** (4.0.13 / 4.1.6 are released as separate version lines) from this repo's **Releases** page, extract it, and copy the **entire contents** into `<game folder>\BepInEx\plugins\FavoriteMusicPlayer\`
+3. **Download & extract**: download the FavoriteMusicPlayer archive **matching your SPT version** (4.0.13 / 4.1.6 are released as separate version lines) from this repo's **Releases** page, and extract its **entire contents** into your SPT root folder (the one containing `EscapeFromTarkov.exe`)
 4. **Add music**: drop audio files into the matching folders (see the table below, or the aboutThisFolder.txt in each folder)
-5. **Launch**: press F1 (F12 on some setups) in the main menu — a "FavoriteMusicPlayer" section in ConfigurationManager means it works
+5. **Launch**: press F1 (F12 on some setups) in the main menu — a "halfbreadpin-FavoriteMusicPlayer" section in ConfigurationManager means it works
 
-Expected layout after copying (the DLL must sit directly inside `FavoriteMusicPlayer\` — don't nest it one level deeper):
+Layout after extraction:
 
 ```
 BepInEx\plugins\FavoriteMusicPlayer\
@@ -41,8 +41,9 @@ BepInEx\plugins\FavoriteMusicPlayer\
 └── UISounds\
 ```
 
-> Tip: the mod auto-creates the full music folder tree on first launch (even if you only copied the DLL).
-> Uninstall: delete `BepInEx\plugins\FavoriteMusicPlayer\` and `BepInEx\config\halfBreadPin.FavoriteMusicPlayer.cfg`.
+> Tip: the mod auto-creates the full music folder tree on first launch (even if you only extracted the DLL).
+> The archive includes a LICENSE (MIT) file.
+> Uninstall: delete `BepInEx\plugins\FavoriteMusicPlayer\` and `BepInEx\config\com.halfbreadpin.favoritemusicplayer.cfg`.
 
 ## Music Folder Reference
 
@@ -73,7 +74,7 @@ Open ConfigurationManager in-game (F1 / F12):
 - Volumes, playlist source (combined / map-only / default-only), playlist length, combat triggers and durations, indoor/headset multipliers, jukebox hotkeys
 - "5. Duration Limits": max play time (seconds) for spawn / results / UI sounds, 0 = unlimited
 
-Config file: `BepInEx\config\halfBreadPin.FavoriteMusicPlayer.cfg`.
+Config file: `BepInEx\config\com.halfbreadpin.favoritemusicplayer.cfg`.
 
 ## Building
 
@@ -81,8 +82,8 @@ One source tree, two version targets (`src/Common.props` holds shared config; ve
 
 ```powershell
 cd src
-dotnet build FavoriteMusicPlayer.csproj -c Release       # SPT 4.0.13 → dist\4.0.13\FavoriteMusicPlayer\
-dotnet build FavoriteMusicPlayer.4_1.csproj -c Release   # SPT 4.1.6  → dist\4.1.6\FavoriteMusicPlayer\
+dotnet build FavoriteMusicPlayer.csproj -c Release       # SPT 4.0.13 → dist\4.0.13\BepInEx\plugins\FavoriteMusicPlayer\
+dotnet build FavoriteMusicPlayer.4_1.csproj -c Release   # SPT 4.1.6  → dist\4.1.6\BepInEx\plugins\FavoriteMusicPlayer\
 ```
 
 - Requires .NET SDK 8+ (no NuGet dependencies, builds offline)

@@ -8,7 +8,7 @@ This repo is FavoriteMusicPlayer (a BepInEx client plugin — the SPT 4.0.13 por
 
 - The **game install folder (default `E:\ETF`) is strictly read-only**. Builds reference DLLs from it (csproj `GameDir` property, overridable); never write there. Users install by copying files manually.
 - Target framework is **netstandard2.1** (SPT 4.0.x official client mod template).
-- Plugin GUID `halfBreadPin.FavoriteMusicPlayer` **must not change** (breaks user configs) — and must not be changed back to the original author's GUID (conflicts with the original mod).
+- Plugin GUID `com.halfbreadpin.favoritemusicplayer` and plugin name `halfbreadpin-FavoriteMusicPlayer` **must not change** (sp-mod/The Forge requires the `com.username.modname` / `Username-ModName` format; switched from the old `halfBreadPin.FavoriteMusicPlayer` in 2026-10 before release, no external users) — changing them breaks user configs, and they must never be set back to the original author's GUID (conflicts with the original mod).
 - Mutually exclusive with the original Bobby's Music Player (same patch targets → double playback if both installed).
 
 ## Repository Layout
@@ -21,7 +21,7 @@ src/                          source code (develop here)
   ├─ Plugin.cs                plugin entry + jukebox + audio loading + duration limits + SPT version compat layer
   ├─ Patches/                 all Harmony patches (13)
   └─ Utils/OverlayDebug.cs    in-game debug overlay (DEBUG builds only)
-dist/<version-line>/FavoriteMusicPlayer/  build output (gitignored, distributed via Releases)
+dist/<version-line>/BepInEx/plugins/FavoriteMusicPlayer/  build output (gitignored, distributed via Releases; the archive extracts straight into the SPT root)
 docs/                          music folder guide (CN/EN)
 tools/create_dist_tree.sh      regenerates the dist folder tree for both version lines
 README.md / README_EN.md       user-facing docs (CN/EN)

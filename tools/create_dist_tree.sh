@@ -3,7 +3,7 @@
 set -e
 DIST_ROOT="$(cd "$(dirname "$0")/.." && pwd)/dist"
 for VER in "4.0.13" "4.1.6"; do
-DIST="$DIST_ROOT/$VER/FavoriteMusicPlayer"
+DIST="$DIST_ROOT/$VER/BepInEx/plugins/FavoriteMusicPlayer"
 mkdir -p "$DIST"
 
 write_note() {

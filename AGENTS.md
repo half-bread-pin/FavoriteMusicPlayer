@@ -8,7 +8,7 @@
 
 - **游戏安装目录（默认 `E:\ETF`）绝对只读**。构建时从中引用 DLL（csproj 的 `GameDir` 属性可覆盖），绝不写入。发布物由用户手动复制进游戏。
 - 产物目标框架是 **netstandard2.1**（SPT 4.0.x 官方客户端 mod 模板要求）。
-- 插件 GUID `halfBreadPin.FavoriteMusicPlayer` **不可更改**——改了会导致用户配置文件失效，且不得改回原作者 GUID（与原版 mod 冲突）。
+- 插件 GUID `com.halfbreadpin.favoritemusicplayer` 与插件名 `halfbreadpin-FavoriteMusicPlayer` **不可更改**（sp-mod/The Forge 规定的 `com.username.modname` / `Username-ModName` 格式；2026-10 发布前由旧值 `halfBreadPin.FavoriteMusicPlayer` 切换而来，无外部用户）——再改会导致用户配置文件失效，且不得改回原作者 GUID（与原版 mod 冲突）。
 - 与原版 Bobby's Music Player **互斥**（补丁目标相同，同时安装会双重播放）。
 
 ## 仓库结构
@@ -21,7 +21,7 @@ src/                          源码（在此开发）
   ├─ Plugin.cs                BepInEx 插件入口 + 点唱机 + 音频加载 + 时长限制 + SPT 版本兼容层
   ├─ Patches/                 全部 Harmony 补丁（13 个）
   └─ Utils/OverlayDebug.cs    DEBUG 构建的游戏内调试覆盖层
-dist/<版本线>/FavoriteMusicPlayer/  构建产物（已 gitignore，不入库；经 Releases 分发）
+dist/<版本线>/BepInEx/plugins/FavoriteMusicPlayer/  构建产物（已 gitignore，不入库；经 Releases 分发，压缩包解压即入 SPT 根目录）
 docs/                          音乐文件夹对照文档（中/英）
 tools/create_dist_tree.sh      重新生成两条版本线的 dist 文件夹树
 README.md / README_EN.md       面向用户的说明（中/英）

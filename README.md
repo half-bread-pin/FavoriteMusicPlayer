@@ -25,11 +25,11 @@ BepInEx 客户端插件（非服务器 mod），把游戏里的各类音乐/音�
 
 1. **前置要求**：SPT 4.0.13 或 4.1.6 游戏安装（自带 BepInEx 5；更低的 4.1.x 未测试）
 2. **卸载旧版**：如果你装过原版 Bobby's Music Player 或其它名称的音乐替换 mod，请先删除其插件文件夹——两个音乐 mod 同时运行会导致补丁冲突/双重播放
-3. **下载并复制文件**：从本仓库的 **Releases** 页面下载**与你 SPT 版本对应**的 FavoriteMusicPlayer 压缩包（4.0.13 / 4.1.6 两条版本线各自发布）并解压，把里面的**全部内容**复制到 `游戏目录\BepInEx\plugins\FavoriteMusicPlayer\`
+3. **下载并解压**：从本仓库的 **Releases** 页面下载**与你 SPT 版本对应**的 FavoriteMusicPlayer 压缩包（4.0.13 / 4.1.6 两条版本线各自发布），把压缩包内的**全部内容**解压到 SPT 游戏根目录（包含 `EscapeFromTarkov.exe` 的文件夹）
 4. **放音乐**：把音频文件放进对应文件夹（对照下面的表格，或看每个文件夹里的 aboutThisFolder.txt）
-5. **启动游戏**：主菜单按 F1（部分安装为 F12）打开 ConfigurationManager，能看到 "FavoriteMusicPlayer" 分节即安装成功
+5. **启动游戏**：主菜单按 F1（部分安装为 F12）打开 ConfigurationManager，能看到 "halfbreadpin-FavoriteMusicPlayer" 分节即安装成功
 
-复制后的目录结构（注意 DLL 要直接位于 `FavoriteMusicPlayer\` 下，不要多套一层文件夹）：
+解压后的目录结构：
 
 ```
 BepInEx\plugins\FavoriteMusicPlayer\
@@ -41,8 +41,9 @@ BepInEx\plugins\FavoriteMusicPlayer\
 └── UISounds\
 ```
 
-> 提示：mod 首次启动会自动创建全部音乐文件夹（即使只复制了 DLL），之后直接往里放文件即可。
-> 卸载：删除 `BepInEx\plugins\FavoriteMusicPlayer\` 文件夹与 `BepInEx\config\halfBreadPin.FavoriteMusicPlayer.cfg`。
+> 提示：mod 首次启动会自动创建全部音乐文件夹（即使只解压了 DLL），之后直接往里放文件即可。
+> 压缩包内包含 LICENSE（MIT）文件。
+> 卸载：删除 `BepInEx\plugins\FavoriteMusicPlayer\` 文件夹与 `BepInEx\config\com.halfbreadpin.favoritemusicplayer.cfg`。
 
 ## 音乐文件夹对照表
 
@@ -75,7 +76,7 @@ FavoriteMusicPlayer\
 - 各类音量、歌单来源（混合/仅地图/仅默认）、歌单长度、战斗触发条件与时长、室内/耳机音量倍率、点唱机快捷键
 - "5. 时长限制设置"：出生/死亡撤离/UI 音效最长播放时长（秒），0=不限
 
-配置文件：`BepInEx\config\halfBreadPin.FavoriteMusicPlayer.cfg`。
+配置文件：`BepInEx\config\com.halfbreadpin.favoritemusicplayer.cfg`。
 
 ## 编译
 
@@ -83,8 +84,8 @@ FavoriteMusicPlayer\
 
 ```powershell
 cd src
-dotnet build FavoriteMusicPlayer.csproj -c Release       # SPT 4.0.13 → dist\4.0.13\FavoriteMusicPlayer\
-dotnet build FavoriteMusicPlayer.4_1.csproj -c Release   # SPT 4.1.6  → dist\4.1.6\FavoriteMusicPlayer\
+dotnet build FavoriteMusicPlayer.csproj -c Release       # SPT 4.0.13 → dist\4.0.13\BepInEx\plugins\FavoriteMusicPlayer\
+dotnet build FavoriteMusicPlayer.4_1.csproj -c Release   # SPT 4.1.6  → dist\4.1.6\BepInEx\plugins\FavoriteMusicPlayer\
 ```
 
 - 需 .NET SDK 8+（无 NuGet 依赖，离线可构建）
