@@ -25,9 +25,45 @@ using HeadsetClass = HeadphonesItemClass;
 
 namespace FavoriteMusicPlayer
 {
-    // FavoriteMusicPlayer 1.0.0（2026-10-24）：本项目由 ZCode（AI 编程助手）基于原
+    // FavoriteMusicPlayer 1.1.0（2026-11-13）：对外发布版本号 1.0.0 → 1.1.0（藏身处音乐
+    // 系列，对应开发日志 1.7.x）；BepInPlugin Version 与程序集版本（Common.props）同步更新，
+    // CM 面板标题随之显示 "FavoriteMusicPlayer 1.1.0"（cfg 按 GUID 命名，升版本不影响用户配置）。
+    // 1.0.0（2026-10-24）：本项目由 ZCode（AI 编程助手）基于原
     // Bobby's Music Player 1.2.4（作者 BobbyRenzobbi，https://github.com/BobbyRenzobbi/Bobbys-Music-Player）
-    // 编写移植并更名发布，移植历程即下列 1.3.x~1.6.x 开发日志。
+    // 编写移植并更名发布，移植历程即下列 1.3.x~1.7.x 开发日志。
+    // 1.7.2：藏身处音乐改为"双歌单暂停/恢复"机制并修复退出根因：正常退出藏身处从不
+    //       卸载藏身处（游戏把藏身处 GameWorld 缓存供快速重进），LocationId=="hideout"
+    //       在回到主菜单后永远为 true——v1.7.0/1.7.1 的轮询因此把退出后的菜单期继续
+    //       当作藏身处（歌单不停、菜单声道被持续压 0 与游戏 DOFade(1) 打架）。进出检测
+    //       改为 GameWorld.LocationId + GUISounds.HideoutSoundActive（公有属性，两版同名）
+    //       ‖ GameStatus.Running（首次进入的加载期）。行为按用户规格重写：进藏身处
+    //       暂停主菜单歌单（藏身处歌单来源全程静默菜单链，主菜单来源仅加载期静音、
+    //       加载完成后从暂停处续播）；退出停靠藏身处歌单（保留曲目与进度，再次进入
+    //       从暂停处续播）并恢复主菜单歌单。游戏从不重启藏身处退出后的菜单音乐
+    //       （重启只发生在登录后/对战后），暂停/恢复由模组自理。
+    //       枚举下拉本地化改走原生路线：ConfigurationManager 原生下拉框本就支持
+    //       [Description] 属性（ObjectToGuiContent 读取），新增 LocalizedDescriptionAttribute
+    //       子类按当前语言返回 en/zh 标签，删除 v1.7.1 整套反射复刻 ComboBox 的自绘
+    //       机械（实测失效）。插件名去作者前缀改为 FavoriteMusicPlayer（CM 标题=
+    //       Name+Version="FavoriteMusicPlayer 1.0.0"；GUID/Version 不动，cfg 不受影响）。
+    // 1.7.1：修复藏身处音乐完全不播放的 bug：藏身处路径从不调用 GameWorld.OnGameStarted
+    //       （4.0.13/4.1.6 反编译核验：4 个调用点全在 raid/联网路径），InRaid 在藏身处恒为
+    //       false——v1.7.0 把藏身处分支放在 !InRaid 之后，导致每帧走菜单分支把藏身处状态
+    //       重置掉。改为藏身处分支最先执行，检测改用 GameWorld.LocationId=="hideout"
+    //       （游戏自身判定，BaseLocalGame.method_4 建图期间即赋值，加载画面时已生效）。
+    //       主菜单续播模式的音量接管提前到加载期间开始，实现点击藏身处起的真正无缝续播。
+    //       枚举下拉改复刻 ConfigurationManager 原生 ComboBox（按钮+延迟绘制钩子弹层），
+    //       替换掉被否决的 GUILayout.Toolbar 横排按钮；两游戏 CM.dll 字节级相同，钩子名已核验。
+    // 1.7.0：新增藏身处音乐（"6. Hideout Music Settings / 6. 藏身处音乐设置"，4.0.13/4.1.6 通用）：
+    //       来源=主菜单歌单时进藏身处不停止主菜单音乐——游戏只对菜单声道做 DOTween 音量渐隐、
+    //       播放链不断，故一次性 DOTween.Kill 该 tween 后接管音量平滑拉到藏身处音量；
+    //       来源=藏身处歌单时用 HideoutMusic 文件夹按长度随机填充、走独立声道播放。
+    //       小键盘点唱机在藏身处按来源路由（主菜单来源控制菜单音乐，藏身处歌单来源控制藏身处音乐）。
+    //       枚举下拉经 ConfigurationManagerAttributes.CustomDrawer 本地化：语言项恒显 简体中文，
+    //       中文模式下环境音乐歌单来源/藏身处歌单来源显示中文标签（成员名不动，cfg 兼容）。
+    //       藏身处 UI 音效时长限制（ProcessDucks）从"被跳过"变为正常生效。
+    //       休息区原版收音机（场景 Appliance+AudioAmbiance，自带 TrackList 独立 3D 声道）
+    //       与本模组零交集，技术上互不干扰；仅存在"同时可听"的叠加，README 已说明。
     // 1.6.0：时长限制改为"定时淡出"机制——该定制引擎上 AudioClip.Create+SetData 无法生成可用副本
     //       （1.5.1/1.5.2 两轮实测判死裁剪方案）。出生音乐=自有声道计时淡出+Stop；
     //       UI 音效/死亡撤离音乐=新增 PlaySoundDuckPatch 钩 GUISounds.PlaySound，对登记了
@@ -48,7 +84,9 @@ namespace FavoriteMusicPlayer
     // - 地图歌单查找大小写不敏感，未知地图回退到默认歌单
     // - 新增 terminal（终点站）、labyrinth（迷宫）地图专属音乐文件夹
     // - 音频枚举只认白名单扩展名，文件夹里的说明文件不会被当作音乐加载
-    [BepInPlugin("com.halfbreadpin.favoritemusicplayer", "halfbreadpin-FavoriteMusicPlayer", "1.0.0")]
+    // 插件名 2026-11 用户决策去掉作者前缀（CM 面板标题 = Name+Version = "FavoriteMusicPlayer 1.0.0"）；
+    // GUID/Version 不动：cfg 文件按 GUID 命名，用户设置不受影响，与原版 mod 冲突检测靠 GUID。
+    [BepInPlugin("com.halfbreadpin.favoritemusicplayer", "FavoriteMusicPlayer", "1.1.0")]
     public class Plugin : BaseUnityPlugin
     {
         // ===== SPT 版本兼容层 =====
@@ -90,6 +128,10 @@ namespace FavoriteMusicPlayer
 #endif
         }
         public static bool InRaid { get; set; } = false;
+        // 在藏身处（见 Update() 顶部的进出检测公式，v1.7.2）；藏身处音乐分支用
+        public static bool InHideout { get; set; } = false;
+        // 在藏身处且藏身处音乐来源=藏身处歌单：小键盘点唱机此时控制藏身处音乐而非主菜单音乐
+        public static bool HideoutMusicActive { get; set; } = false;
 
 #if DEBUG
         #region Debug
@@ -128,19 +170,64 @@ namespace FavoriteMusicPlayer
         public static ConfigEntry<float> SpawnMusicMaxLength { get; set; }
         public static ConfigEntry<float> RaidEndMusicMaxLength { get; set; }
         public static ConfigEntry<float> UISoundsMaxLength { get; set; }
+        public static ConfigEntry<EHideoutMusicPlaylist> HideoutMusicPlaylist { get; set; }
+        public static ConfigEntry<float> HideoutMusicVolume { get; set; }
+        public static ConfigEntry<int> HideoutMusicLength { get; set; }
 
         #endregion
 
+        // ===== 枚举下拉本地化（v1.7.2，原生路线）=====
+        // ConfigurationManager 的原生枚举下拉框（SettingFieldDrawer.ObjectToGuiContent）会读取
+        // 成员上的 System.ComponentModel.DescriptionAttribute 并显示其 Description 文本——
+        // 这是官方支持的本地化入口（已对游戏内 CM.dll 反编译核验；netstandard2.1 插件发出的
+        // 该属性与 CM 读取的类型经 System.dll 转发器身份一致）。此子类按当前语言返回 en/zh，
+        // 按钮标签逐帧重算（切语言立即生效）；弹出列表项由 CM 缓存，重开 CM 窗口后重本地化。
+        // 成员名持久化进 cfg 不可改名（AGENTS.md 硬性约束）。
+        [AttributeUsage(AttributeTargets.Field)]
+        private sealed class LocalizedDescriptionAttribute : System.ComponentModel.DescriptionAttribute
+        {
+            private readonly string zh;
+
+            public LocalizedDescriptionAttribute(string en, string zh) : base(en)
+            {
+                this.zh = zh;
+            }
+
+            // 覆盖 Description 属性按当前语言实时返回：CM 每帧经反射读取（无缓存该属性值的路径）
+            public override string Description
+            {
+                get { return Language != null && Language.Value == ELanguage.Chinese ? zh : base.Description; }
+            }
+        }
+
         public enum ESoundtrackPlaylist
         {
+            [LocalizedDescription("Map Specific Playlist Only", "仅地图歌单")]
             MapSpecificPlaylistOnly,
+            [LocalizedDescription("Combined Playlists", "混合歌单")]
             CombinedPlaylists,
+            [LocalizedDescription("Default Playlist Only", "仅默认歌单")]
             DefaultPlaylistOnly
+        }
+
+        // 藏身处音乐歌单来源（无混合选项）。成员名持久化进 cfg，不可改名；
+        // 中文显示文本经 LocalizedDescription 属性提供（原生下拉框自动读取）。
+        public enum EHideoutMusicPlaylist
+        {
+            // 主菜单歌单：进入藏身处暂停主菜单歌单（加载期静音），加载完成后从暂停处续播
+            [LocalizedDescription("Menu Music Playlist", "主菜单歌单")]
+            MenuMusicPlaylist,
+            // 藏身处歌单：HideoutMusic 文件夹独立歌单，随机填充后播放；退出停靠、重进续播
+            [LocalizedDescription("Hideout Playlist", "藏身处歌单")]
+            HideoutPlaylist
         }
 
         public enum ELanguage
         {
+            [LocalizedDescription("English", "English")]
             English,
+            // 语言项恒显中文原生名（两种语言下都是"简体中文"）
+            [LocalizedDescription("简体中文", "简体中文")]
             Chinese
         }
 
@@ -158,6 +245,7 @@ namespace FavoriteMusicPlayer
         private static readonly string DeathMusicDir = Path.Combine(PluginDir, "DeathMusic");
         private static readonly string ExtractMusicDir = Path.Combine(PluginDir, "ExtractMusic");
         private static readonly string UiSoundsDir = Path.Combine(PluginDir, "UISounds");
+        private static readonly string HideoutMusicDir = Path.Combine(PluginDir, "HideoutMusic");
 
         // 与 UnityWebRequestMultimedia 支持的 AudioType 一一对应的扩展名白名单。
         // 文件夹里的说明 txt 等非音频文件不会被枚举，避免加载失败。
@@ -236,6 +324,7 @@ namespace FavoriteMusicPlayer
                 }
                 Directory.CreateDirectory(DeathMusicDir);
                 Directory.CreateDirectory(ExtractMusicDir);
+                Directory.CreateDirectory(HideoutMusicDir);
                 foreach (string dir in UISoundsPatch.uiSoundsDir)
                 {
                     Directory.CreateDirectory(Path.Combine(UiSoundsDir, dir));
@@ -482,6 +571,13 @@ namespace FavoriteMusicPlayer
             loc.Attrs.Category = zh ? loc.ZhSection : null;
         }
 
+        // 枚举下拉本地化（v1.7.2 定稿）：原生 CM 下拉框自动读取枚举成员上的
+        // LocalizedDescriptionAttribute（见枚举定义处）显示本地化标签，无需任何自绘。
+        // 否决路线存档（勿再尝试）：
+        // - v1.7.0 GUILayout.Toolbar 横排按钮：交互被用户否决；
+        // - v1.7.1 反射注入 Utilities.ComboBox.CurrentDropdownDrawer 复刻原生下拉：实测失效
+        //   （该钩子由原生 DrawComboboxField 每帧重挂；一次性赋值只闪现一帧）。
+
         #endregion
 
         internal static List<AudioClip> ambientTrackArray = new List<AudioClip>();
@@ -504,6 +600,19 @@ namespace FavoriteMusicPlayer
         internal static bool HasFinishedLoadingAudio = false;
         internal static List<string> ambientTrackNamesArray = new List<string>();
         private static bool spawnTrackHasPlayed = false;
+
+        // ===== 藏身处音乐状态（v1.7.0；v1.7.2 改为停靠/恢复语义）=====
+        private static bool prevInHideout = false;
+        private static List<string> hideoutTrackList = new List<string>();
+        internal static List<AudioClip> hideoutTrackArray = new List<AudioClip>();
+        internal static List<string> hideoutTrackNamesArray = new List<string>();
+        private static List<string> hideoutTrackListToPlay = new List<string>();
+        private static bool HasStartedLoadingHideoutAudio = false;
+        internal static bool HasFinishedLoadingHideoutAudio = false;
+        // 主菜单续播模式：是否已 Kill 游戏对菜单声道的音量渐隐 tween（每次藏身处访问一次性执行）
+        private static bool hideoutMenuTweenKilled = false;
+        // 主菜单声道缺失只警告一次（MenuMusicPatch 未生效/未捕获时避免每帧刷日志）
+        private static bool hideoutMenuVolumeWarned = false;
 
         internal void Awake()
         {
@@ -530,6 +639,7 @@ namespace FavoriteMusicPlayer
             spawnTrackList.AddRange(GetAudioFiles(SpawnMusicDir));
             RaidEndMusicPatch.deathMusicList.AddRange(GetAudioFiles(DeathMusicDir));
             RaidEndMusicPatch.extractMusicList.AddRange(GetAudioFiles(ExtractMusicDir));
+            hideoutTrackList.AddRange(GetAudioFiles(HideoutMusicDir));
             int counter = 0;
             foreach (var dir in UISoundsPatch.uiSoundsDir)
             {
@@ -553,6 +663,8 @@ namespace FavoriteMusicPlayer
             string customMenuMusicSettingsZh = "2. 主菜单音乐设置";
             string dynamicSoundtrackSettingsZh = "4. 战斗音乐设置";
             string durationLimitsSettingsZh = "5. 时长限制设置";
+            string hideoutMusicSettings = "6. Hideout Music Settings";
+            string hideoutMusicSettingsZh = "6. 藏身处音乐设置";
 
 #if DEBUG
             PositionXDebug = Config.Bind<float>("DEBUG", "PositionXDebug", 10f, new ConfigDescription("PositionXDebug", new AcceptableValueRange<float>(-2000f, 2000f), new ConfigurationManagerAttributes { Order = 99 }));
@@ -677,6 +789,26 @@ namespace FavoriteMusicPlayer
                 "界面音效的最长播放时长（秒）。0 = 不限制。超过上限的音效会在到时自动淡出并停止。修改即时生效（对之后触发的音效生效）。",
                 new AcceptableValueRange<float>(0f, 3600f));
             UISoundsMaxLength.SettingChanged += (_, __) => ReregisterUiSoundLimits();
+
+            // "6. 藏身处音乐设置"：在 5 之后首次绑定，维持 0→1→2→3→4→5→6 的分类显示顺序。
+            // 默认音量 0 = 关闭（不覆盖原版藏身处静音效果，用户调高后即生效）。
+            HideoutMusicPlaylist = BindLocalized(hideoutMusicSettings, hideoutMusicSettingsZh, "Hideout music playlist source", "藏身处音乐歌单来源",
+                EHideoutMusicPlaylist.MenuMusicPlaylist,
+                "- Menu Music Playlist: entering the hideout pauses the main menu playlist; after loading finishes it resumes from the pause point at the Hideout music volume. Leaving the hideout returns to the menu music naturally.\n- Hideout Playlist: the main menu playlist is paused for the whole hideout visit while a separate HideoutMusic folder playlist (randomly filled up to the playlist length) plays; on leaving, it is parked and resumes from the same point on the next hideout visit.",
+                "- 主菜单歌单：进入藏身处时暂停主菜单歌单，加载完成后从暂停处按藏身处音乐音量继续播放；退出藏身处后主菜单音乐自然延续。\n- 藏身处歌单：藏身处期间主菜单歌单保持暂停，改播 HideoutMusic 文件夹的独立歌单（按歌单长度随机填充）；退出时停靠，下次进入藏身处从暂停处继续。",
+                order: 1);
+            HideoutMusicVolume = BindLocalized(hideoutMusicSettings, hideoutMusicSettingsZh, "Hideout music volume", "藏身处音乐音量",
+                0f, "Volume of the music played inside the hideout. 0 = off (default). Changes apply immediately.\nNote: with the \"Menu Music Playlist\" source this scales the resuming main menu music; with the \"Hideout Playlist\" source it is the dedicated hideout source's volume.",
+                "藏身处内播放音乐的音量。0 = 关闭（默认）。修改即时生效。\n注意：「主菜单歌单」来源时缩放藏身处内续播的主菜单音乐；「藏身处歌单」来源时为独立藏身处声道音量。",
+                new AcceptableValueRange<float>(0f, 1f), order: 2);
+            HideoutMusicLength = BindLocalized(hideoutMusicSettings, hideoutMusicSettingsZh, "Hideout music playlist length (Minutes)", "藏身处音乐歌单长度（分钟）",
+                60, "The length of the playlist created for the hideout (HideoutMusic folder). Changing it discards the current parked hideout playlist; the new one is built on the next hideout visit.\nOnly applies to the \"Hideout Playlist\" source; the \"Menu Music Playlist\" source keeps using the main menu playlist and its own length setting.",
+                "为藏身处生成的歌单总长度（分钟）。修改会丢弃当前停靠的藏身处歌单，下次进入藏身处按新长度重建。\n仅对「藏身处歌单」来源生效；「主菜单歌单」来源沿用主菜单歌单及其长度设置。",
+                new AcceptableValueRange<int>(0, 600), order: 0, isAdvanced: true);
+            // 修改歌单长度 = 丢弃停靠的藏身处歌单与加载状态，下次进入按新长度重建（v1.7.2 行为）
+            HideoutMusicLength.SettingChanged += (_, __) => ResetHideoutPlaylist();
+
+
             environmentDict[EnvironmentType.Outdoor] = 1f;
 
             // 单个补丁启用失败（如游戏更新导致目标绑定不上）只记错误并继续，
@@ -720,7 +852,48 @@ namespace FavoriteMusicPlayer
 #if DEBUG
             OverlayDebug.Instance.UpdateOverlay();
 #endif
+            // ===== 藏身处进出检测（v1.7.2 根因修复）=====
+            // 游戏事实（4.0.13/4.1.6 反编译核验）：正常退出藏身处只调 HideHideout（关 UI），
+            // 从不卸载藏身处世界——GameWorld 被缓存供快速重进（再次进入无加载画面即此设计）。
+            // 因此 LocationId=="hideout" 在回到主菜单后永远为 true，不能单独作为信号
+            // （v1.7.0/1.7.1 的 bug：退出后菜单期仍被当作藏身处，歌单不停、菜单声道被压 0）。
+            // 可靠公式：世界是藏身处 && (藏身处界面已显示 ‖ 藏身处游戏正在加载)：
+            //   HideoutSoundActive —— GUISounds 公有属性（两版同名）：藏身处界面显示时 true，
+            //     MenuScreen 显示（回主菜单）时置 false —— 正常退出的可靠翻转信号；
+            //   Status==Running —— BaseLocalGame.method_4 加载画面期间的过渡态：首次进入
+            //     （有加载画面）从点击藏身处起即判定 true，界面显示后由 HideoutSoundActive 接管。
+            // 缓存式重进（无加载画面）由 HideoutSoundActive 翻 true 即刻生效；开 raid/登出/
+            // 重连等 UnloadHideout 流程销毁世界 → worldInHideout 为 false。OnGameStarted 在
+            // 藏身处从不触发（InRaid 恒 false），藏身处分支必须先于 !InRaid / 局内分支。
+            var gameWorld = Singleton<GameWorld>.Instance;
+            bool worldInHideout = gameWorld != null && gameWorld.LocationId == "hideout";
+            var hideoutGame = Singleton<AbstractGame>.Instance;
+            bool hideoutLoading = worldInHideout && hideoutGame != null && hideoutGame.Status == GameStatus.Running;
+            bool inHideout = worldInHideout
+                && (hideoutLoading || (Singleton<GUISounds>.Instance != null && Singleton<GUISounds>.Instance.HideoutSoundActive));
+            InHideout = inHideout;
+            HideoutMusicActive = inHideout && HideoutMusicPlaylist != null
+                && HideoutMusicPlaylist.Value == EHideoutMusicPlaylist.HideoutPlaylist;
+
+            // ===== 进出边沿（一次性动作；藏身处内每帧行为由 UpdateHideoutMusic 的不变式维持）=====
+            if (inHideout && !prevInHideout)
+            {
+                OnHideoutEntered();
+            }
+            else if (!inHideout && prevInHideout)
+            {
+                OnHideoutLeft();
+            }
+            prevInHideout = inHideout;
+
             MenuMusicJukebox.MenuMusicControls();
+            // 藏身处：走藏身处音乐逻辑（主菜单续播或独立歌单）。必须先于 !InRaid / 局内分支——
+            // 后两者会各自重置状态（菜单分支重置 raid 装载标志，局内分支启动 raid 音频）
+            if (inHideout)
+            {
+                UpdateHideoutMusic();
+                return;
+            }
             if (!InRaid)
             {
                 if (!MenuMusicPatch.HasReloadedAudio)
@@ -737,8 +910,7 @@ namespace FavoriteMusicPlayer
                 return;
             }
 
-            var gameWorld = Singleton<GameWorld>.Instance;
-            if (gameWorld == null || gameWorld.MainPlayer == null || gameWorld.MainPlayer.Location == "hideout")
+            if (gameWorld == null || gameWorld.MainPlayer == null)
             {
                 return;
             }
@@ -823,6 +995,211 @@ namespace FavoriteMusicPlayer
                 LogSource.LogInfo(trackName + " has been loaded and added to playlist");
             }
             HasFinishedLoadingAudio = true;
+        }
+
+        // ============ 藏身处音乐（v1.7.0；v1.7.2 双歌单暂停/恢复 + 进出根因修复）============
+        // 游戏事实（反编译核验）：藏身处路径不调用 GameWorld.OnGameStarted（InRaid 恒 false）；
+        // 正常退出藏身处不卸载世界（缓存供快速重进），游戏也不在退出后重启菜单音乐（只 DOFade
+        // 音量回来；重启只发生在登录后/对战后）→ 菜单歌单的暂停/恢复由模组自理（边沿驱动）。
+        // 进入藏身处时游戏对菜单声道做 DOTween 音量渐隐（两版同为 audioSource_3.DOFade 2 秒），
+        // 播放与排曲链不断；raid 电台系统在藏身处休眠；休息区收音机（场景 Appliance+
+        // AudioAmbiance，自带 TrackList 独立 3D 声道）与模组声道零交集。
+
+        /// <summary>进入藏身处边沿：暂停主菜单歌单（两种来源统一——藏身处歌单来源全程静默菜单链，
+        /// 主菜单歌单来源在加载期静音、加载完成后由 UpdateHideoutMusic 从暂停处恢复）</summary>
+        private static void OnHideoutEntered()
+        {
+            MenuMusicJukebox.PauseForHideout();
+            LogSource.LogInfo("进入藏身处：主菜单歌单已暂停（来源=" + (HideoutMusicActive ? "藏身处歌单" : "主菜单歌单") + "）");
+        }
+
+        /// <summary>离开藏身处边沿：停靠藏身处歌单（保留曲目与进度，下次进入从暂停处续播）
+        /// + 恢复主菜单歌单 + 重置菜单音量接管状态（退出时游戏的 DOFade(1) 必须活着以恢复音量）</summary>
+        private static void OnHideoutLeft()
+        {
+            ParkHideoutPlaylist();
+            MenuMusicJukebox.ResumeForHideout();
+            hideoutMenuTweenKilled = false;
+            hideoutMenuVolumeWarned = false;
+            LogSource.LogInfo("离开藏身处：藏身处歌单已停靠，主菜单歌单已恢复");
+        }
+
+        private void UpdateHideoutMusic()
+        {
+            // UI 音效时长限制在藏身处内正常处理（v1.7.0 之前藏身处走菜单分支被跳过）
+            ProcessDucks();
+
+            var currentGame = Singleton<AbstractGame>.Instance;
+            if (currentGame == null || currentGame.Status != GameStatus.Started)
+            {
+                // 首次进入的加载期（Status==Running）：主菜单歌单维持进入时暂停（静音），藏身处歌单也不播
+                return;
+            }
+
+            if (HideoutMusicActive)
+            {
+                // 来源=藏身处歌单：主菜单歌单保持暂停（若因藏身处内中途切换来源而在播：暂停之）
+                MenuMusicJukebox.PauseForHideout();
+                if (Audio.hideoutAudioSource == null)
+                {
+                    Audio.hideoutAudioSource = gameObject.AddComponent<AudioSource>();
+                    LogSource.LogWarning("藏身处音乐 AudioSource added to game");
+                }
+                PrepareHideoutAudioClips();
+                // 藏身处声道音量直连配置值（刻意不乘室内/耳机倍率：藏身处是安静的自有空间）。
+                // 菜单声道不写音量：菜单歌单已暂停，游戏自己的进/出渐隐自然兜底
+                Audio.AdjustVolume(Audio.hideoutAudioSource, HideoutMusicVolume.Value);
+                // 停靠恢复：上次退出时停靠的藏身处歌单从暂停处继续（无停靠时为 no-op）
+                HideoutMusicJukebox.ResumeIfParked();
+                HideoutMusicJukebox.HideoutControls();
+                HideoutMusicJukebox.hideoutCalled = true;
+                HideoutMusicJukebox.PlayHideoutMusic();
+            }
+            else
+            {
+                // 来源=主菜单歌单：加载完成（或缓存式重进界面显示）后从暂停处恢复菜单歌单
+                // （已恢复后为 no-op）；藏身处内中途切回该来源时先停靠藏身处歌单（平时 no-op）
+                ParkHideoutPlaylist();
+                MenuMusicJukebox.ResumeForHideout();
+                FadeMenuMusicInHideout(HideoutMusicVolume.Value);
+            }
+        }
+
+        /// <summary>
+        /// 藏身处内主菜单音乐的音量接管。游戏进入藏身处时对菜单声道做 DOTween 音量渐隐
+        /// （播放链不断），本方法一次性 Kill 该 tween，随后每帧把音量按约 2 秒平滑拉到目标值。
+        /// 离开藏身处无需手动恢复：游戏回主菜单时会再 DOFade 回 1。
+        /// </summary>
+        private static void FadeMenuMusicInHideout(float target)
+        {
+            if (Audio.menuMusicAudioSource == null)
+            {
+                if (!hideoutMenuVolumeWarned)
+                {
+                    hideoutMenuVolumeWarned = true;
+                    LogSource.LogWarning("主菜单音乐声道尚未捕获（MenuMusicPatch 未生效或尚未触发过），藏身处内无法续播主菜单音乐");
+                }
+                return;
+            }
+            if (!hideoutMenuTweenKilled)
+            {
+                hideoutMenuTweenKilled = true;
+                // 杀掉游戏对菜单声道的全部音量渐隐 tween（进入藏身处时的 DOFade），
+                // 否则它会在 2 秒内持续覆盖我们写入的音量；已完成的 tween 自动移除，Kill 幂等
+                DG.Tweening.DOTween.Kill(Audio.menuMusicAudioSource);
+                LogSource.LogInfo("藏身处内接管主菜单音乐音量（已终止游戏的音量渐隐 tween）");
+            }
+            // 0.5/秒 ≈ 2 秒完成过渡，与游戏自身渐隐节奏一致；目标变化（改音量/改来源）也平滑跟随
+            Audio.menuMusicAudioSource.volume = Mathf.MoveTowards(Audio.menuMusicAudioSource.volume, target, Time.deltaTime * 0.5f);
+        }
+
+        /// <summary>
+        /// 停靠藏身处歌单（离开藏身处 / 藏身处内切到主菜单歌单来源时调用）：暂停声道、停排曲协程、
+        /// 记录剩余时长——曲目数组、曲目游标、AudioClip 全部保留，下次进入藏身处从暂停处续播。
+        /// 各步自带守卫，重复调用与"从未播过/已停靠"场景均为 no-op。
+        /// </summary>
+        private static void ParkHideoutPlaylist()
+        {
+            if (Audio.hideoutAudioSource == null)
+            {
+                return;
+            }
+            // 用户在藏身处用快捷键暂停的：同样视为停靠（剩余时长沿用其暂停位置）
+            if (Audio.hideoutAudioSource.isPlaying || HideoutMusicJukebox.UserPaused)
+            {
+                if (Audio.hideoutAudioSource.isPlaying)
+                {
+                    Audio.hideoutAudioSource.Pause();
+                    HideoutMusicJukebox.ParkedRemaining = Audio.hideoutAudioSource.clip.length - Audio.hideoutAudioSource.time;
+                }
+                else
+                {
+                    HideoutMusicJukebox.ParkedRemaining = HideoutMusicJukebox.UserPausedRemaining;
+                }
+                HideoutMusicJukebox.Parked = true;
+                LogSource.LogInfo("藏身处歌单已停靠（剩余 " + HideoutMusicJukebox.ParkedRemaining.ToString("F0") + "s，下次进入藏身处续播）");
+            }
+            if (HideoutMusicJukebox.hideoutCoroutine != null)
+            {
+                StaticManager.Instance.StopCoroutine(HideoutMusicJukebox.hideoutCoroutine);
+                HideoutMusicJukebox.hideoutCoroutine = null;
+            }
+            HideoutMusicJukebox.hideoutCalled = false;
+            HideoutMusicJukebox.ClearUserPauseState();
+        }
+
+        /// <summary>
+        /// 修改藏身处歌单长度时整体丢弃当前藏身处歌单（含停靠态），下次进入按新长度重建
+        /// </summary>
+        private static void ResetHideoutPlaylist()
+        {
+            if (Audio.hideoutAudioSource != null)
+            {
+                Audio.hideoutAudioSource.Stop();
+                Audio.hideoutAudioSource.clip = null;
+            }
+            if (HideoutMusicJukebox.hideoutCoroutine != null)
+            {
+                StaticManager.Instance.StopCoroutine(HideoutMusicJukebox.hideoutCoroutine);
+                HideoutMusicJukebox.hideoutCoroutine = null;
+            }
+            HideoutMusicJukebox.hideoutCalled = false;
+            HideoutMusicJukebox.ResetPauseState();
+            HasStartedLoadingHideoutAudio = false;
+            HasFinishedLoadingHideoutAudio = false;
+            hideoutTrackArray.Clear();
+            hideoutTrackNamesArray.Clear();
+            hideoutTrackListToPlay.Clear();
+            LogSource.LogInfo("藏身处歌单长度已修改：停靠的歌单已丢弃，下次进入藏身处按新长度重建");
+        }
+
+        /// <summary>
+        /// 进入藏身处（来源=藏身处歌单）时一次性准备音频：按歌单长度随机填充
+        /// </summary>
+        private void PrepareHideoutAudioClips()
+        {
+            if (!HasStartedLoadingHideoutAudio)
+            {
+                HasStartedLoadingHideoutAudio = true;
+                LoadHideoutMusicClips();
+            }
+        }
+
+        private async void LoadHideoutMusicClips()
+        {
+            float totalLength = 0f;
+            HasFinishedLoadingHideoutAudio = false;
+            hideoutTrackArray.Clear();
+            hideoutTrackNamesArray.Clear();
+            hideoutTrackListToPlay.Clear();
+            hideoutTrackListToPlay.AddRange(hideoutTrackList);
+            if (hideoutTrackListToPlay.IsNullOrEmpty())
+            {
+                LogSource.LogWarning("藏身处歌单为空（HideoutMusic 文件夹没有音频文件），藏身处内不播放音乐。文件夹位置见启动日志。");
+                HasFinishedLoadingHideoutAudio = true;
+                return;
+            }
+            float targetLength = 60f * HideoutMusicLength.Value;
+            LogSource.LogInfo("藏身处歌单加载开始（目标长度 " + HideoutMusicLength.Value + " 分钟，候选 " + hideoutTrackListToPlay.Count + " 首）");
+            // do-while：至少装载一首（歌单长度 0 时等价于随机播 1 首），与主菜单歌单行为一致
+            do
+            {
+                int nextRandom = rand.Next(hideoutTrackListToPlay.Count);
+                string track = hideoutTrackListToPlay[nextRandom];
+                string trackName = Path.GetFileName(track);
+                AudioClip unityAudioClip = await AsyncRequestAudioClip(track);
+                if (unityAudioClip == null)
+                {
+                    hideoutTrackListToPlay.Remove(track);
+                    continue;
+                }
+                hideoutTrackArray.Add(unityAudioClip);
+                hideoutTrackNamesArray.Add(trackName);
+                hideoutTrackListToPlay.Remove(track);
+                totalLength += unityAudioClip.length;
+                LogSource.LogInfo(trackName + " has been loaded and added to hideout playlist");
+            } while ((totalLength < targetLength) && (!hideoutTrackListToPlay.IsNullOrEmpty()));
+            HasFinishedLoadingHideoutAudio = true;
         }
 
         private void CombatLerp()
@@ -970,9 +1347,54 @@ namespace FavoriteMusicPlayer
         internal static Coroutine menuMusicCoroutine;
         private static bool paused = false;
         private static float pausedTime = 0f;
+
+        // ===== 藏身处进出的菜单歌单暂停/恢复（v1.7.2）=====
+        // 与用户快捷键暂停（paused）相互独立：模组因进出藏身处驱动的暂停，恢复时若用户
+        // 自暂停过（paused==true）则尊重不恢复（用户在菜单用快捷键自行继续即可）。
+        // 手动点唱机操作（重播/上一首/下一首）会清掉本暂停态——用户接管了播放控制。
+        private static bool hideoutPaused = false;
+        private static float hideoutPausedRemaining = 0f;
+
+        /// <summary>进入藏身处：暂停主菜单歌单（未在播/用户已自暂停时为 no-op）</summary>
+        internal static void PauseForHideout()
+        {
+            if (hideoutPaused || Audio.menuMusicAudioSource == null
+                || !Audio.menuMusicAudioSource.isPlaying || paused)
+            {
+                return;
+            }
+            Audio.menuMusicAudioSource.Pause();
+            if (menuMusicCoroutine != null)
+            {
+                StaticManager.Instance.StopCoroutine(menuMusicCoroutine);
+                menuMusicCoroutine = null;
+            }
+            hideoutPausedRemaining = Audio.menuMusicAudioSource.clip.length - Audio.menuMusicAudioSource.time;
+            hideoutPaused = true;
+        }
+
+        /// <summary>离开藏身处（或主菜单来源加载完成后）：从暂停处恢复主菜单歌单并重挂排曲链</summary>
+        internal static void ResumeForHideout()
+        {
+            if (!hideoutPaused || Audio.menuMusicAudioSource == null)
+            {
+                return;
+            }
+            Audio.menuMusicAudioSource.UnPause();
+            menuMusicCoroutine = StaticManager.Instance.WaitSeconds(hideoutPausedRemaining, new Action(Plugin.PlayMenuMusic));
+            Plugin.LogSource.LogInfo("主菜单歌单从暂停处继续（剩余 " + hideoutPausedRemaining.ToString("F0") + "s）");
+            hideoutPaused = false;
+            hideoutPausedRemaining = 0f;
+        }
+
         // This method is responsible for handling the "Jukebox" controls of the Main Menu
         public static void MenuMusicControls()
         {
+            // 藏身处内且歌单来源=藏身处歌单：小键盘快捷键让位给藏身处音乐（HideoutMusicJukebox）
+            if (Plugin.HideoutMusicActive)
+            {
+                return;
+            }
             if (!SoundtrackJukebox.soundtrackCalled && Audio.menuMusicAudioSource != null)
             {
                 if (Plugin.PauseTrack.Value.IsDown() && Audio.menuMusicAudioSource.isPlaying)
@@ -1001,6 +1423,7 @@ namespace FavoriteMusicPlayer
                     }
                     StaticManager.Instance.StopCoroutine(menuMusicCoroutine);
                     paused = false;
+                    hideoutPaused = false;
                     Plugin.PlayMenuMusic();
                 }
                 if (Plugin.PreviousTrack.Value.IsDown())
@@ -1013,6 +1436,7 @@ namespace FavoriteMusicPlayer
                     }
                     StaticManager.Instance.StopCoroutine(menuMusicCoroutine);
                     paused = false;
+                    hideoutPaused = false;
                     Plugin.PlayMenuMusic();
                 }
                 if (Plugin.SkipTrack.Value.IsDown())
@@ -1020,6 +1444,7 @@ namespace FavoriteMusicPlayer
                     Audio.menuMusicAudioSource.Stop();
                     StaticManager.Instance.StopCoroutine(menuMusicCoroutine);
                     paused = false;
+                    hideoutPaused = false;
                     Plugin.PlayMenuMusic();
                 }
             }
@@ -1112,6 +1537,143 @@ namespace FavoriteMusicPlayer
         }
     }
 
+    // 藏身处音乐点唱机（v1.7.0；v1.7.2 增停靠/恢复）：镜像 SoundtrackJukebox 的暂停/重播/
+    // 上一首/下一首，仅在藏身处且来源=藏身处歌单时生效（MenuMusicControls 检测到
+    // HideoutMusicActive 时让位）。Parked=离开藏身处时停靠的暂停态：曲目数组、曲目游标、
+    // AudioSource 均保留，ResumeIfParked 从暂停处续播并重挂排曲链。
+    public class HideoutMusicJukebox : MonoBehaviour
+    {
+        internal static bool hideoutCalled = false;
+        private static int trackCounter = 0;
+        internal static Coroutine hideoutCoroutine;
+        // 用户快捷键暂停（在播时按小键盘 5）
+        internal static bool UserPaused = false;
+        internal static float UserPausedRemaining = 0f;
+        // 停靠态（离开藏身处时由 Plugin.ParkHideoutPlaylist 置位；重进时 ResumeIfParked 消费）
+        internal static bool Parked = false;
+        internal static float ParkedRemaining = 0f;
+
+        public static void PlayHideoutMusic()
+        {
+            if (!hideoutCalled || Audio.hideoutAudioSource.isPlaying || UserPaused || Parked
+                || Plugin.hideoutTrackArray.IsNullOrEmpty() || !Plugin.HasFinishedLoadingHideoutAudio)
+            {
+                return;
+            }
+            if (Plugin.hideoutTrackArray.Count == 1)
+            {
+                trackCounter = 0;
+            }
+            Audio.hideoutAudioSource.clip = Plugin.hideoutTrackArray[trackCounter];
+            Audio.hideoutAudioSource.Play();
+            Plugin.LogSource.LogInfo("Playing (hideout) " + Plugin.hideoutTrackNamesArray[trackCounter]);
+            trackCounter++;
+            hideoutCoroutine = StaticManager.Instance.WaitSeconds(Audio.hideoutAudioSource.clip.length, new Action(PlayHideoutMusic));
+            if (trackCounter >= Plugin.hideoutTrackArray.Count)
+            {
+                trackCounter = 0;
+            }
+        }
+
+        // This method is responsible for handling the "Jukebox" controls of the Hideout music
+        public static void HideoutControls()
+        {
+            if (Plugin.PauseTrack.Value.IsDown() && Audio.hideoutAudioSource.isPlaying)
+            {
+                Audio.hideoutAudioSource.Pause();
+                if (hideoutCoroutine != null)
+                {
+                    StaticManager.Instance.StopCoroutine(hideoutCoroutine);
+                }
+                UserPausedRemaining = Audio.hideoutAudioSource.clip.length - Audio.hideoutAudioSource.time;
+                UserPaused = true;
+            }
+            else if (Plugin.PauseTrack.Value.IsDown() && UserPaused)
+            {
+                Audio.hideoutAudioSource.UnPause();
+                hideoutCoroutine = StaticManager.Instance.WaitSeconds(UserPausedRemaining, new Action(PlayHideoutMusic));
+                UserPaused = false;
+            }
+            if (Plugin.RestartTrack.Value.IsDown())
+            {
+                Audio.hideoutAudioSource.Stop();
+                if (trackCounter != 0)
+                {
+                    trackCounter--;
+                }
+                else
+                {
+                    trackCounter = Plugin.hideoutTrackArray.Count - 1;
+                }
+                if (hideoutCoroutine != null)
+                {
+                    StaticManager.Instance.StopCoroutine(hideoutCoroutine);
+                }
+                UserPaused = false;
+                Parked = false;
+                PlayHideoutMusic();
+            }
+            if (Plugin.PreviousTrack.Value.IsDown())
+            {
+                Audio.hideoutAudioSource.Stop();
+                trackCounter -= 2;
+                if (trackCounter < 0)
+                {
+                    trackCounter = Plugin.hideoutTrackArray.Count + trackCounter;
+                }
+                if (hideoutCoroutine != null)
+                {
+                    StaticManager.Instance.StopCoroutine(hideoutCoroutine);
+                }
+                UserPaused = false;
+                Parked = false;
+                PlayHideoutMusic();
+            }
+            if (Plugin.SkipTrack.Value.IsDown())
+            {
+                Audio.hideoutAudioSource.Stop();
+                if (hideoutCoroutine != null)
+                {
+                    StaticManager.Instance.StopCoroutine(hideoutCoroutine);
+                }
+                UserPaused = false;
+                Parked = false;
+                PlayHideoutMusic();
+            }
+        }
+
+        /// <summary>重进藏身处时从停靠处恢复：续播暂停的声道并重挂排曲链（无停靠时 no-op）</summary>
+        internal static void ResumeIfParked()
+        {
+            if (!Parked || Audio.hideoutAudioSource == null)
+            {
+                return;
+            }
+            Audio.hideoutAudioSource.UnPause();
+            hideoutCoroutine = StaticManager.Instance.WaitSeconds(ParkedRemaining, new Action(PlayHideoutMusic));
+            Plugin.LogSource.LogInfo("藏身处歌单从停靠处恢复（剩余 " + ParkedRemaining.ToString("F0") + "s）");
+            Parked = false;
+            ParkedRemaining = 0f;
+        }
+
+        // 停靠时清用户暂停挂起态（其暂停位置已被吸收进 ParkedRemaining；曲目游标保留）
+        internal static void ClearUserPauseState()
+        {
+            UserPaused = false;
+            UserPausedRemaining = 0f;
+        }
+
+        // ResetHideoutPlaylist（歌单长度变更）调用：连停靠态与曲目游标一起清零
+        internal static void ResetPauseState()
+        {
+            UserPaused = false;
+            UserPausedRemaining = 0f;
+            Parked = false;
+            ParkedRemaining = 0f;
+            trackCounter = 0;
+        }
+    }
+
     [RequireComponent(typeof(AudioSource))]
     public class Audio : MonoBehaviour
     {
@@ -1119,6 +1681,7 @@ namespace FavoriteMusicPlayer
         public static AudioSource spawnAudioSource;
         public static AudioSource combatAudioSource;
         public static AudioSource menuMusicAudioSource;
+        public static AudioSource hideoutAudioSource;
         public static void SetClip(AudioSource audiosource, AudioClip clip)
         {
             audiosource.clip = clip;

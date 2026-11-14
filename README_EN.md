@@ -12,12 +12,13 @@ A BepInEx client plugin (not a server mod) that replaces the game's music and UI
 | Feature | Description |
 |---|---|
 | Main menu music | Loops in the main menu |
+| Hideout music | Plays inside the hideout: the main menu playlist (paused on entry, resumes from the pause point after loading), or a separate random HideoutMusic playlist (parked on exit, resumes from the pause point on re-entry); volume and playlist length configurable |
 | Ambient soundtrack | Random playlist per raid; global pool + per-map folders for 14 maps |
 | Spawn music | One random track per raid (lazy-loaded) |
 | Combat music | Triggered by firing / being hit / nearby shots / explosions, with fade in/out |
 | Death / Extract music | Results screen music |
 | UI sounds | 8 interface sounds (quests, trading, errors, ...) |
-| Jukebox | Numpad 2/4/5/6: restart / previous / next / pause (menu and in-raid) |
+| Jukebox | Numpad 2/4/5/6: restart / previous / next / pause (menu, in-raid and hideout; in the hideout the hotkeys follow the selected music source) |
 | Duration limits | Optional max play time for spawn / results / UI sounds with automatic fade-out |
 | Bilingual config panel | English / Chinese switch in ConfigurationManager |
 
@@ -37,6 +38,7 @@ BepInEx\plugins\FavoriteMusicPlayer\
 ├── CustomMenuMusic\
 ├── DeathMusic\
 ├── ExtractMusic\
+├── HideoutMusic\
 ├── Soundtrack\
 └── UISounds\
 ```
@@ -61,6 +63,7 @@ FavoriteMusicPlayer\
 │       ├── lighthouse, reserve, shoreline, streets, terminal, woods
 ├── DeathMusic\                      ← death results music
 ├── ExtractMusic\                    ← successful extraction music
+├── HideoutMusic\                    ← hideout music (used by the Hideout Playlist source)
 └── UISounds\                        ← interface sounds (one folder per sound)
 ```
 
@@ -72,7 +75,18 @@ Open ConfigurationManager in-game (F1 / F12):
 
 - "0. Language Settings": switch EN/中文 display
 - Volumes, playlist source (combined / map-only / default-only), playlist length, combat triggers and durations, indoor/headset multipliers, jukebox hotkeys
+- "6. Hideout Music Settings": hideout music source (Menu Music Playlist = the main menu playlist is paused on entry and resumes from the pause point after loading / Hideout Playlist = a random playlist from the HideoutMusic folder plays during the hideout visit, parked on exit and resumed on re-entry), hideout music volume (0–1, default 0 = off), hideout playlist length (minutes, applies to the Hideout Playlist source only; changing it discards the parked playlist, rebuilt on next entry)
 - "5. Duration Limits": max play time (seconds) for spawn / results / UI sounds, 0 = unlimited
+
+**Advanced settings** (shown after enabling the "Advanced settings" toggle at the top of the panel, inside their normal categories):
+
+| Setting | Default | Range | Takes effect |
+|---|---|---|---|
+| Menu Music playlist length (Minutes) | 60 | 0–600 | On game restart or after a raid (playlist rebuild) |
+| Ambient Soundtrack playlist length (Minutes) | 50 | 0–600 | Next raid |
+| Hideout music playlist length (Minutes) | 60 | 0–600 | Next hideout visit (changing it discards the currently parked hideout playlist) |
+| Combat entry fader (seconds) | 4 | 0.1–30 | Immediately (applies live during fades) |
+| Combat exit fader (seconds) | 8 | 0.1–120 | Immediately (applies live during fades) |
 
 Config file: `BepInEx\config\com.halfbreadpin.favoritemusicplayer.cfg`.
 
@@ -88,7 +102,7 @@ dotnet build FavoriteMusicPlayer.4_1.csproj -c Release   # SPT 4.1.6  → dist\4
 
 - Requires .NET SDK 8+ (no NuGet dependencies, builds offline)
 - The 4.0.13 target references `E:\ETF` and the 4.1.6 target references `F:\EFT416` by default (this machine's game folders); override with `-p:GameDir=...`. Builds only **read** game DLLs and never write to the game folder
-- Name release archives per version line (e.g. `FavoriteMusicPlayer-1.0.0-4.0.13.zip`) so users can pick the one matching their SPT version
+- Name release archives per version line (e.g. `FavoriteMusicPlayer-1.1.0-4.0.13.zip`) so users can pick the one matching their SPT version
 - The repo contains no game files. After a game update, verify patch target signatures first (see AGENTS_EN.md)
 
 ## Troubleshooting
@@ -102,6 +116,8 @@ Log file: `<game folder>\BepInEx\LogOutput.log`:
 | A file fails to load | Log shows `Failed To Fetch Audio Clip` — usually a format issue, convert to wav/mp3 |
 | Ambient music too quiet | 0.05 default volume is intentional; raise it in the F1 panel |
 | No map-specific music | Check playlist source setting and that the map folder has audio files |
+| No music in the hideout | Hideout music volume defaults to 0 = off — raise it first; with the Hideout Playlist source, make sure `HideoutMusic\` has audio files |
+| My music plays alongside the hideout radio | The rest-area radio is a separate vanilla channel — no technical conflict with the mod, they are just both audible. Interact with the radio to turn it off manually (it also goes silent when the generator is off) |
 
 ## Credits & License
 

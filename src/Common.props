@@ -5,9 +5,9 @@
     <TargetFramework>netstandard2.1</TargetFramework>
     <RootNamespace>FavoriteMusicPlayer</RootNamespace>
     <AssemblyName>FavoriteMusicPlayer</AssemblyName>
-    <Version>1.0.0</Version>
-    <AssemblyVersion>1.0.0.0</AssemblyVersion>
-    <FileVersion>1.0.0.0</FileVersion>
+    <Version>1.1.0</Version>
+    <AssemblyVersion>1.1.0.0</AssemblyVersion>
+    <FileVersion>1.1.0.0</FileVersion>
     <LangVersion>latest</LangVersion>
     <Nullable>disable</Nullable>
     <Configurations>Debug;Release</Configurations>
@@ -53,6 +53,11 @@
     </Reference>
     <Reference Include="Comfort">
       <HintPath>$(ManagedDir)\Comfort.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <!-- DOTween（v1.7.0）：藏身处主菜单续播需 Kill 游戏对菜单声道的音量渐隐 tween -->
+    <Reference Include="DOTween">
+      <HintPath>$(ManagedDir)\DOTween.dll</HintPath>
       <Private>false</Private>
     </Reference>
     <Reference Include="Unity.TextMeshPro">

@@ -80,6 +80,10 @@ write_note "$DIST/ExtractMusic" \
   '【撤离成功音乐】成功撤离后的结算界面音乐（对应游戏内 ArenaWin 音效类型）。' \
   '[Extraction music] Results-screen music on a successful extraction (the game ArenaWin sound slot).'
 
+write_note "$DIST/HideoutMusic" \
+  '【藏身处音乐】进入藏身处时播放（"6. 藏身处音乐设置"中来源选"藏身处歌单"时使用；选"主菜单歌单"时不读本文件夹，主菜单音乐会在藏身处继续播放）。每次进入藏身处随机组成歌单，音量默认 0=关闭，需在设置里调大。' \
+  '[Hideout music] Plays inside the hideout (used when the "6. Hideout Music Settings" source is Hideout Playlist; with the Menu Music Playlist source this folder is unused and the main menu music keeps playing there). A random playlist is built on each hideout visit; volume defaults to 0 = off, raise it in the settings.'
+
 write_note "$DIST/UISounds/QuestCompleted" \
   '【UI 音效：任务完成】' '[UI sound: quest completed]'
 write_note "$DIST/UISounds/QuestFailed" \

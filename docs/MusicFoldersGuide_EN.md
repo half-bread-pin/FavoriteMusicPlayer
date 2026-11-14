@@ -7,6 +7,7 @@ All music lives under `BepInEx\plugins\FavoriteMusicPlayer\` in your game folder
 | Folder | Replaces | Trigger & playback |
 |---|---|---|
 | `CustomMenuMusic\sounds\` | Main menu music | Loops in the main menu; shuffled into a playlist of the configured length (default 60 min) |
+| `HideoutMusic\` | Hideout music (Hideout Playlist source) | Random playlist up to the configured hideout length (default 60 min) on first entry; parked on exit, resumes from the pause point on re-entry; see "Hideout Music" below |
 | `Soundtrack\default_soundtrack\` | Ambient soundtrack (global pool) | Random playlist per raid, up to the configured length (default 50 min) |
 | `Soundtrack\map_specific_soundtrack\<map>\` | Per-map ambient music | Only participates on that map, per the playlist-source setting |
 | `Soundtrack\combat_music\` | Combat music | Loops while in combat, fades out after; a random track each combat |
@@ -41,7 +42,26 @@ Sub-folders of `Soundtrack\map_specific_soundtrack\` and their maps:
 | `terminal` | Terminal | `Terminal` |
 | `woods` | Woods | `Woods` |
 
-> Lookup is case-insensitive; unrecognized map IDs fall back to the default playlist (with a log warning). The hideout plays no mod music.
+> Lookup is case-insensitive; unrecognized map IDs fall back to the default playlist (with a log warning). The hideout is not part of the per-map system — it has its own "Hideout Music" mechanism (next section).
+
+## Hideout Music ("6. Hideout Music Settings")
+
+Entering the hideout plays music according to the "Hideout music playlist source" setting (both sources first pause the main menu playlist; the loading screen is silent):
+
+- **Menu Music Playlist** (default): after loading finishes, the main menu playlist **resumes from the pause point** (including the game's default menu music when you have no custom files) at the hideout music volume, eased in smoothly; on leaving, the menu music continues naturally.
+- **Hideout Playlist**: the main menu playlist stays paused for the whole hideout visit while the `HideoutMusic\` folder playlist (randomly filled up to the hideout length) plays; **on exit the playlist is parked (tracks and progress retained) and resumes from the pause point on the next visit** — including after a raid in between.
+
+Related settings:
+
+| Setting | Default | Notes |
+|---|---|---|
+| Hideout music volume | 0 (= off) | 0–1 float. At 0 the vanilla hideout silence is preserved; raise it to enable |
+| Hideout music playlist length (Minutes) | 60 | Advanced setting; applies to the Hideout Playlist source only. Changing it discards the currently parked playlist (rebuilt at the new length on next entry) |
+| Hideout music playlist source | Menu Music Playlist | Switching the source inside the hideout takes effect immediately (smooth pause/resume transitions) |
+
+The jukebox hotkeys also work in the hideout: with the Menu Music Playlist source they control the resuming main menu music; with the Hideout Playlist source they control the hideout music.
+
+> The vanilla rest-area radio (the one you toggle by interacting) is a completely separate audio channel — it does not interfere with the mod technically. With both active you simply hear both at once; turn the radio off manually if you prefer.
 
 ## Ambient Playlist Modes
 
@@ -67,7 +87,7 @@ Combat music fades in over 4 s and fades out over 8 s after combat ends (both co
 
 ## Jukebox Hotkeys
 
-Shared between the menu and in-raid ambient music (numpad defaults, rebindable):
+Shared between the menu, in-raid ambient music and hideout music (numpad defaults, rebindable); inside the hideout they follow the selected hideout music source (Menu Music Playlist → controls the continuing menu music, Hideout Playlist → controls the hideout music):
 
 | Key | Action |
 |---|---|

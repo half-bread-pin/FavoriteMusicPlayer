@@ -8,7 +8,7 @@
 
 - **游戏安装目录（默认 `E:\ETF`）绝对只读**。构建时从中引用 DLL（csproj 的 `GameDir` 属性可覆盖），绝不写入。发布物由用户手动复制进游戏。
 - 产物目标框架是 **netstandard2.1**（SPT 4.0.x 官方客户端 mod 模板要求）。
-- 插件 GUID `com.halfbreadpin.favoritemusicplayer` 与插件名 `halfbreadpin-FavoriteMusicPlayer` **不可更改**（sp-mod/The Forge 规定的 `com.username.modname` / `Username-ModName` 格式；2026-10 发布前由旧值 `halfBreadPin.FavoriteMusicPlayer` 切换而来，无外部用户）——再改会导致用户配置文件失效，且不得改回原作者 GUID（与原版 mod 冲突）。
+- 插件 GUID `com.halfbreadpin.favoritemusicplayer` **不可更改**（cfg 配置文件按 GUID 命名，改了会导致用户配置失效；与原版 mod 冲突检测也靠 GUID——不得改回原作者 GUID）。**插件名（BepInPlugin Name）2026-11 用户决策：去掉作者前缀改为 `FavoriteMusicPlayer`**（ConfigurationManager 面板标题 = Name+Version，即 "FavoriteMusicPlayer 1.1.0"，版本号升级自动跟随——升版本只改 `Plugin.cs` 的 BepInPlugin Version 与 `Common.props` 的 Version/AssemblyVersion/FileVersion 三处，cfg 不受影响）；原"插件名 halfbreadpin-FavoriteMusicPlayer 不可更改"约束作废。BepInEx 日志源随插件名变为 `FavoriteMusicPlayer`（排障 grep 不受影响）。sp-mods/The Forge 的 `Username-ModName` 规范继续用于**发布压缩包命名**（与游戏内标题无关）。
 - 与原版 Bobby's Music Player **互斥**（补丁目标相同，同时安装会双重播放）。
 
 ## 仓库结构
@@ -36,6 +36,7 @@ dotnet build FavoriteMusicPlayer.4_1.csproj -c Release   # SPT 4.1.6 版
 ```
 
 - .NET SDK 8+（当前机器 10.0.402），无需 Visual Studio，无 NuGet 包依赖（离线可构建）
+- **发布流程**：`dotnet build`（CopyToDist 只复制 DLL+LICENSE）→ 运行 `tools/create_dist_tree.sh` 生成完整音乐文件夹树与各文件夹的双语 `aboutThisFolder.txt`（新增音乐文件夹必须同步加进该脚本，v1.7.0 加 HideoutMusic 时已同步）→ 打压缩包。漏跑脚本会发布出"只有 DLL"的残缺压缩包
 - 双 csproj 同目录共存：各自的 obj/bin 子目录隔离（obj\4013 / obj\416），`Common.props` 里已统一排除 `obj/**;bin/**` 防止兄弟项目产物混入源码通配——**改版本文本输出路径时勿破坏此机制**
 - `CS0618 isNetworkError/isHttpError 弃用` 警告是预期的（游戏 Unity 运行时下行为正确），不要"修复"成 `uwr.result`
 - 已安装 `ilspycmd`（dotnet global tool）用于反编译游戏程序集
@@ -44,9 +45,10 @@ dotnet build FavoriteMusicPlayer.4_1.csproj -c Release   # SPT 4.1.6 版
 
 **Plugin.cs**（BepInEx 5 BaseUnityPlugin）
 - `Awake()`：创建音乐文件夹 → 枚举音频（白名单扩展名）→ 绑定配置（BindLocalized 双语）→ 启用 13 个补丁
-- `Update()`：菜单/局内状态机、3 个自建 AudioSource（soundtrack/spawn/combat）、战斗淡入淡出（lerp）、音量计算（室内 × 耳机倍率）、时长限制任务处理（ProcessDucks/ProcessSpawnFade）
+- `Update()`：菜单/局内/**藏身处**状态机、3 个 raid 自建 AudioSource（soundtrack/spawn/combat）+ 1 个藏身处 AudioSource、战斗淡入淡出（lerp）、音量计算（室内 × 耳机倍率）、时长限制任务处理（ProcessDucks/ProcessSpawnFade）
 - 音频加载：`UnityWebRequestMultimedia.GetAudioClip("file://...")`
-- 点唱机：`SoundtrackJukebox` / `MenuMusicJukebox`，小键盘 2/4/5/6，`StaticManager.WaitSeconds` 排下一首
+- 点唱机：`SoundtrackJukebox` / `MenuMusicJukebox` / `HideoutMusicJukebox`，小键盘 2/4/5/6，`StaticManager.WaitSeconds` 排下一首
+- 新增引用（Common.props）：`DOTween.dll`（藏身处主菜单续播 Kill 音量渐隐 tween）
 
 **音乐文件夹映射**（`Plugin.MapFolderNames`，大小写不敏感，未知 ID 回退默认歌单）：
 `bigmap→customs, factory4_day|night→factory, Interchange→interchange, laboratory→labs, Labyrinth→labyrinth, Lighthouse→lighthouse, RezervBase→reserve, Sandbox|Sandbox_high→ground_zero, Shoreline→shoreline, TarkovStreets→streets, Terminal→terminal, Woods→woods`
@@ -96,8 +98,8 @@ dotnet build FavoriteMusicPlayer.4_1.csproj -c Release   # SPT 4.1.6 版
 ## 本地化机制
 
 - 配置键名与 cfg Section **一律英文且不可改**；中文只经 `ConfigurationManagerAttributes` 的 `DispName`/`Description`/`Category` 覆盖显示层
-- 所有配置绑定走 `Plugin.BindLocalized`；新增配置必须用它，并保持绑定顺序满足 0→1→2→3→4→5 首次出现（ConfigurationManager 分类显示顺序 = 首次绑定顺序）
-- 枚举下拉值显示枚举成员名，未翻译；枚举成员名会持久化进 cfg，**不能**改名
+- 所有配置绑定走 `Plugin.BindLocalized`；新增配置必须用它，并保持绑定顺序满足 0→1→2→3→4→5→6 首次出现（ConfigurationManager 分类显示顺序 = 首次绑定顺序）
+- **枚举下拉本地化（v1.7.2 定稿，勿再改路线）**：原生 ConfigurationManager 的枚举下拉框（`SettingFieldDrawer.ObjectToGuiContent`）本就支持读取成员上的 `System.ComponentModel.DescriptionAttribute` 并显示其 `Description` 文本（官方入口，已对游戏内 CM.dll 反编译核验；netstandard2.1 插件发出的该属性与 CM 读取的类型经 System.dll 转发器身份一致）。模组用 `Plugin.LocalizedDescriptionAttribute`（DescriptionAttribute 子类，`override Description` 按当前语言返回 en/zh）挂在枚举成员上即可——**零自绘、零反射**。显示时机：下拉按钮标签逐帧重算（切语言立即生效）；弹出列表项由 CM 的 `_comboBoxCache` 缓存，重开 CM 窗口后重本地化（与"切换语言后重新打开面板"提示一致）。成员名仍持久化进 cfg 不可改名（显示与持久化解耦）。**否决路线存档（勿再尝试）**：v1.7.0 `GUILayout.Toolbar` 横排按钮（交互被用户否决）；v1.7.1 反射注入 `Utilities.ComboBox.CurrentDropdownDrawer` 复刻原生下拉（实测失效——该钩子由原生 `DrawComboboxField` 每帧重挂、CM 调用后置空，一次性赋值只闪现一帧）。该定制引擎的 Unity 模块无 GenericMenu；`CustomDrawer` 挂上即整体绕过原生 DrawEnumField（这也是 v1.7.x 出问题的前提）
 
 ## 时长限制机制（定时淡出）
 
@@ -109,9 +111,30 @@ dotnet build FavoriteMusicPlayer.4_1.csproj -c Release   # SPT 4.1.6 版
 - 0 = 时不登记/不计时，零干预
 - **UI 音效时长即时生效**：`UISoundsMaxLength.SettingChanged → Plugin.ReregisterUiSoundLimits()` 整体重登记（仅对之后触发的音效生效，不追溯正在播放的——用户决策不做追溯掐短；顺带清掉的死亡/撤离登记下次触发自动重建）
 
+## 藏身处音乐机制（v1.7.0 引入；v1.7.2 根因修复 + 双歌单暂停/恢复；4.0.13 / 4.1.6 通用，无版本分支）
+
+游戏侧事实（反编译 + 日志核验，改动前必读）：
+- **`GameWorld.OnGameStarted()` 在藏身处从不被调用**（两版一致）：全部 4 个调用点都在 raid/联网路径 → `Plugin.InRaid` 在藏身处恒为 false。因此 `Update()` 里藏身处分支必须放在 `!InRaid` 分支之前（v1.7.0 曾放错序导致藏身处音乐完全不播）
+- **正常退出藏身处从不卸载藏身处世界**（v1.7.2 修复的第二个根因，日志实锤）：退出按钮只调 `TarkovApplication.GClass2301.HideHideout`（刷服务器队列+毁相机），GameWorld/AbstractGame 单例被刻意**缓存供快速重进**（再次进入无加载画面即此设计）——`LocationId=="hideout"`、`MainPlayer.Location=="hideout"` 在回到主菜单后**永远为 true**，不能作为进出信号（v1.7.0/1.7.1 退出后菜单期仍被当作藏身处：歌单不停、菜单声道被持续压 0 与游戏 `DOFade(1)` 打架）。单例只在 `UnloadHideout` 流程释放（开 raid/登出/重连/档案重载/后端重建，经 CompositeDisposable → `gameWorld.Dispose()` + 场景卸载）
+- **可靠的进出检测公式（v1.7.2）**：`worldInHideout = GameWorld.LocationId=="hideout"` && (`GUISounds.HideoutSoundActive`（公有属性，两版同名——4.0.13 反编译 + 4.1.6 二进制双重核验；藏身处界面显示时 true，`MenuScreen` 显示即回主菜单时置 false）‖ `GameStatus.Running`（`BaseLocalGame.method_4` 加载画面期间的过渡态，首次进入从点击藏身处起即判定 true；`HideoutGame.vmethod_6` 完成后置 `Started`））。缓存式重进由 `HideoutSoundActive` 翻 true 即刻生效；`MainPlayer.Location` 兜底已删除（它同样残留）
+- **游戏从不在藏身处退出后重启菜单音乐**（关键！反编译核验）：退出→回菜单只 `MenuScreen` 的 `DOFade` 音量渐隐回 1；`GUISounds.method_3`（重启菜单音乐）只在登录后/对战后调用（`TarkovApplication.method_54→method_19→method_20`）。raid 部署才会 `StopMenuBackgroundMusicWithDelay` 全停（之后由对战后流程重启）→ **模组自己暂停的菜单歌单必须由模组自己恢复**
+- 进入藏身处时游戏对菜单声道做 DOTween 音量渐隐到 0（两版同为 `audioSource_3.DOFade(x,2f)`——`DOTween.Kill` 两版通用有效），播放与排曲链不断。raid 的 `Audio.RadioSystem` 在藏身处休眠（`StartBroadcast` 只在 raid 路径；两版 globals.json 所有电台默认禁用）；`StaticManager` 为 `HideFlags.DontSave` 持久单例（跨场景存活，协程宿主安全）
+- 休息区收音机 = 场景 `Appliance` + `EFT.Hideout.AudioAmbiance`（`ContinuingPlaybackSettings.TrackList` 随机播放、断电静音、状态存 PlayerPrefs），走自己的 3D `AudioArray` 声道——与模组所有声道零交集，**技术上互不干扰**，仅存在"同时可听"的叠加（用户决策：不自动处理，README 说明手动开关）
+
+模组实现（全部在 Plugin.cs；`Update()` 顶部检测 + 进出边沿 + `UpdateHideoutMusic` 不变式）：
+- 配置分组 "6. Hideout Music Settings / 6. 藏身处音乐设置"：来源枚举 `EHideoutMusicPlaylist{MenuMusicPlaylist, HideoutPlaylist}`、音量 float 0–1 **默认 0（=关闭）**、歌单长度 int 0–600 默认 60（isAdvanced，**仅对藏身处歌单来源生效**）。文件夹 `HideoutMusic\`，加载镜像主菜单加载器（do-while 至少 1 首）
+- **进出边沿（一次性动作）**：`OnHideoutEntered` = `MenuMusicJukebox.PauseForHideout()`（暂停主菜单歌单：Pause+停链+记剩余；未在播/用户已自暂停时 no-op）；`OnHideoutLeft` = `ParkHideoutPlaylist()`（停靠藏身处歌单）+ `MenuMusicJukebox.ResumeForHideout()`（恢复主菜单歌单）+ 重置 Kill 标志（退出时的 `DOFade(1)` 必须活着以恢复菜单音量）
+- **藏身处内每帧（`UpdateHideoutMusic`，`Status==Started` 之后）**：藏身处歌单来源 = 菜单歌单保持暂停 + 懒建 `Audio.hideoutAudioSource`（不进游戏 mixer）+ `PrepareHideoutAudioClips` 随机填充 + 音量直连配置值（**刻意不乘室内/耳机倍率**）+ `ResumeIfParked`（重进续播）+ WaitSeconds 链播放；主菜单歌单来源 = `ResumeForHideout`（加载完成后从暂停处续播，幂等）+ `FadeMenuMusicInHideout`（一次性 `DOTween.Kill` 游戏渐隐 + 每帧 `MoveTowards` 到藏身处音量）。加载期（`Running`）维持静音（用户规格）
+- **停靠语义**：`ParkHideoutPlaylist` 暂停声道+停链+记剩余，曲目数组/游标/AudioClip 全保留（AudioSource 挂在插件 GameObject 上跨场景存活）——再次进入（含开过 raid 再回来）从暂停处续播；用户快捷键暂停的也按停靠吸收。`HideoutMusicLength.SettingChanged → ResetHideoutPlaylist()` 丢弃停靠歌单按新长度重建
+- 点唱机路由：`Plugin.HideoutMusicActive`（在藏身处且来源=藏身处歌单）时 `MenuMusicControls` 让位给 `HideoutMusicJukebox`；主菜单来源时快捷键控制续播中的主菜单音乐。手动点唱机操作会清掉藏身处暂停态（用户接管播放）
+- `ProcessDucks` 在藏身处也运行（UI 音效时长限制在藏身处实际生效）
+- **内存驻留（刻意，非泄露）**：藏身处歌单 AudioClip 跨进出停靠驻留（受歌单长度约束、与主菜单歌单同量级有界复用）；协程一律先 Stop 后重挂，无悬空宿主
+
 ## 已知行为细节（改动前必读）
 
 - 环境音乐默认音量 0.05 是刻意压低的
+- 藏身处音乐音量默认 0（=关闭，与原版藏身处静音一致）是刻意保守的；藏身处歌单长度 0 = 随机播 1 首（与主菜单歌单长度语义一致）；改歌单长度会丢弃停靠的歌单（下次进入重建，非 bug）
+- **游戏系统设置"音乐音量"的路由**（反编译核验）：它只调 MasterMixer 的 "MusicVolume" 参数 → 只作用于 "Music" 混音器组 → 该组里唯一的游戏声道是 `GUISounds.audioSource_3`（主菜单音乐，含模组替换的菜单音乐与藏身处主菜单续播）。模组自建声道（环境/出生/战斗/藏身处歌单）不设 outputAudioMixerGroup、直达 AudioListener，**不受任何游戏音量设置控制**；死亡/撤离音乐走 UI 组（受游戏音效类设置控制）。因此菜单音乐音量的调节入口 = 游戏自带"音乐音量"，模组侧不重复提供（用户决策 2026-11：因其并非控制游戏内所有音乐）
 - 出生音乐播完（或限时停止）才允许环境音乐开始（`PlaySoundtrack` 检查 `spawnAudioSource.isPlaying`）
 - 菜单歌单在 raid 结束返回菜单时重建；UI 音效在此时重新加载
 - 音乐枚举只认 `Plugin.AudioExtensions` 白名单，文件夹里的 txt 被忽略
